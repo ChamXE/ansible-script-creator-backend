@@ -5,8 +5,8 @@ export async function validateUser(credentials: Credentials): Promise<Token | nu
     const query = `
         SELECT password FROM account WHERE username = $1;
     `;
-    const result = (await postgres.query<{password: string}>(query, [credentials.username])).pop();
-    if(result && result.password === credentials.password) {
+    const result = (await postgres.query<{ password: string }>(query, [credentials.username])).pop();
+    if (result && result.password === credentials.password) {
         return {
             "username": credentials.username,
             "token": "blablabla"
@@ -16,7 +16,7 @@ export async function validateUser(credentials: Credentials): Promise<Token | nu
     return null;
 }
 
-export async function registerUser({username, password, email}: User): Promise<void> {
+export async function registerUser({ username, password, email }: User): Promise<void> {
     const query = `
         INSERT INTO account(username, password, email)
         VALUES($1, $2, $3);
@@ -28,8 +28,8 @@ export async function checkUsernameAvailability(username: string): Promise<boole
     const query = `
         SELECT username FROM account WHERE username = $1;
     `;
-    const result = (await postgres.query<{username: string}>(query, [username])).pop();
-    if(result) {
+    const result = (await postgres.query<{ username: string }>(query, [username])).pop();
+    if (result) {
         return false;
     }
     return true;
@@ -48,7 +48,7 @@ export async function getPassword(username: string): Promise<string | null> {
         SELECT password FROM account WHERE username = $1;
     `;
 
-    const result = (await postgres.query<{password: string}>(query, [username])).pop()
+    const result = (await postgres.query<{ password: string }>(query, [username])).pop()
     return result?.password || null;
 }
 

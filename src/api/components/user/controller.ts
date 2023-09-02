@@ -19,7 +19,7 @@ export async function registerUser(request: e.Request, response: e.Response): Pr
     try {
         await user.registerUser(request.body);
         success(response);
-    } catch(e) {
+    } catch (e) {
         log.error(e);
         failure(response, e);
     }
@@ -29,7 +29,7 @@ export async function checkUsernameAvailability(request: e.Request, response: e.
     try {
         const result = await user.checkUsernameAvailability(request.params.username);
         success(response, { availability: result });
-    } catch(e) {
+    } catch (e) {
         log.error(e);
         failure(response, e);
     }
@@ -39,7 +39,7 @@ export async function getUser(request: e.Request, response: e.Response): Promise
     try {
         const result = await user.getUser(request.params.username);
         success(response, { ...result })
-    } catch(e) {
+    } catch (e) {
         log.error(e);
         failure(response, e);
     }
@@ -48,18 +48,18 @@ export async function getUser(request: e.Request, response: e.Response): Promise
 export async function changePassword(request: e.Request, response: e.Response): Promise<void> {
     try {
         const password = await user.getPassword(request.body.username);
-        if(!password) {
+        if (!password) {
             success(response, { success: false });
             return;
         }
-        if(password === request.body.password) {
+        if (password === request.body.password) {
             await user.changePassword(request.body);
             success(response, { success: true });
             return;
         }
         success(response, { success: false });
         return;
-    } catch(e) {
+    } catch (e) {
         log.error(e);
         failure(response, e);
     }
