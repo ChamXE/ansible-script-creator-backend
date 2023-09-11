@@ -14,16 +14,17 @@ export async function retrieveRouters(username: string): Promise<Router[]> {
         SELECT
             r.routerid,
             r.routername,
-            r.serverid,
-            r.nic
+            r.projectid,
+            r.management,
+            r.configuration
         FROM (
             SELECT
-                serverid
-            FROM server
+                projectid
+            FROM project
             WHERE username = $1
             ) q1
         INNER JOIN router r
-        ON r.serverid = q1.serverid;
+        ON r.projectid = q1.projectid;
     `;
     return (await postgres.query<Router>(query, [username]));
 }
@@ -33,15 +34,17 @@ export async function retrieveSwitches(username: string): Promise<Switch[]> {
         SELECT
             s.switchid,
             s.switchname,
-            s.serverid
+            s.projectid,
+            s.stp,
+            s.controller
         FROM (
             SELECT
-                serverid
-            FROM server
+                projectid
+            FROM project
             WHERE username = $1
             ) q1
         INNER JOIN switch s
-        ON s.serverid = q1.serverid;
+        ON s.projectid = q1.projectid;
     `;
     return (await postgres.query<Switch>(query, [username]));
 }
@@ -51,82 +54,91 @@ export async function retrieveHosts(username: string): Promise<Host[]> {
         SELECT
             h.hostid,
             h.hostname,
-            h.serverid
+            h.projectid,
+            h.ip,
+            h.subnet
         FROM (
             SELECT
-                serverid
-            FROM server
+                projectid
+            FROM project
             WHERE username = $1
             ) q1
         INNER JOIN host h
-        ON h.serverid = q1.serverid;
+        ON h.projectid = q1.projectid;
     `;
     return (await postgres.query<Host>(query, [username]));
 }
 
-export async function createServer({ serverid, username, servername }: Server): Promise<void> {
+export async function createServer({ serverid, username, servername, ip, rootcredential }: Server): Promise<void> {
     const query = `
-        INSERT INTO server(serverid, username, servername)
-        VALUES (${serverid ? serverid : 'nextval(\'server_serverid_seq\')'}, $1, $2)
+        INSERT INTO server(serverid, username, servername, ip, rootcredential)
+        VALUES (${serverid ? serverid : 'nextval(\'server_serverid_seq\')'}, $1, $2, $3, $4)
         ON CONFLICT ON CONSTRAINT server_pk
         DO 
             UPDATE
             SET
                 serverid = EXCLUDED.serverid,
                 username = EXCLUDED.username,
-                servername = EXCLUDED.servername;
+                servername = EXCLUDED.servername,
+                ip = EXCLUDED.ip,
+                rootcredential = EXCLUDED.rootcredential;
     `;
 
-    await postgres.query(query, [username, servername]);
+    await postgres.query(query, [username, servername, ip, rootcredential]);
 }
 
-export async function createRouter({ serverid, routerid, routername, nic }: Router): Promise<void> {
+export async function createRouter({ projectid, routerid, routername, management, configuration }: Router): Promise<void> {
     const query = `
-        INSERT INTO router(serverid, routerid, routername, nic)
-        VALUES ($1, ${routerid ? routerid : 'nextval(\'router_routerid_seq\')'}, $2, $3)
+        INSERT INTO router(projectid, routerid, routername, management, configuration)
+        VALUES ($1, ${routerid ? routerid : 'nextval(\'router_routerid_seq\')'}, $2, $3, $4)
         ON CONFLICT ON CONSTRAINT router_pk
         DO 
             UPDATE
             SET
-                serverid = EXCLUDED.serverid,
+                projectid = EXCLUDED.projectid,
                 routerid = EXCLUDED.routerid,
                 routername = EXCLUDED.routername,
-                nic = EXCLUDED.nic;
+                management = EXCLUDED.management,
+                configuration = EXCLUDED.configuration;
     `;
 
-    await postgres.query(query, [serverid, routername, nic]);
+    await postgres.query(query, [projectid, routername, management, configuration]);
 }
 
-export async function createSwitch({ serverid, switchid, switchname }: Switch): Promise<void> {
+export async function createSwitch({ projectid, switchid, switchname, stp, controller }: Switch): Promise<void> {
     const query = `
-        INSERT INTO switch(serverid, switchid, switchname)
-        VALUES ($1, ${switchid ? switchid : 'nextval(\'switch_switchid_seq\')'}, $2)
+        INSERT INTO switch(projectid, switchid, switchname, stp, controller)
+        VALUES ($1, ${switchid ? switchid : 'nextval(\'switch_switchid_seq\')'}, $2, $3, $4)
         ON CONFLICT ON CONSTRAINT switch_pk
         DO 
             UPDATE
             SET
-                serverid = EXCLUDED.serverid,
+                projectid = EXCLUDED.projectid,
                 switchid = EXCLUDED.switchid,
-                switchname = EXCLUDED.switchname;
+                switchname = EXCLUDED.switchname,
+                stp = EXCLUDED.stp,
+                controller = EXCLUDED.controller;
     `;
 
-    await postgres.query(query, [serverid, switchname]);
+    await postgres.query(query, [projectid, switchname, stp, controller]);
 }
 
-export async function createHost({ serverid, hostid, hostname }: Host): Promise<void> {
+export async function createHost({ projectid, hostid, hostname, ip, subnet }: Host): Promise<void> {
     const query = `
-        INSERT INTO host(serverid, hostid, hostname)
-        VALUES ($1, ${hostid ? hostid : 'nextval(\'host_hostid_seq\')'}, $2)
+        INSERT INTO host(projectid, hostid, hostname, ip, subnet)
+        VALUES ($1, ${hostid ? hostid : 'nextval(\'host_hostid_seq\')'}, $2, $3, $4)
         ON CONFLICT ON CONSTRAINT host_pk
         DO 
             UPDATE
             SET
-                serverid = EXCLUDED.serverid,
+                projectid = EXCLUDED.projectid,
                 hostid = EXCLUDED.hostid,
-                hostname = EXCLUDED.hostname;
+                hostname = EXCLUDED.hostname,
+                ip = EXCLUDED.ip,
+                subnet = EXCLUDED.subnet;
     `;
 
-    await postgres.query(query, [serverid, hostname]);
+    await postgres.query(query, [projectid, hostname, ip, subnet]);
 }
 
 export async function deleteServer(serverId: string): Promise<void> {

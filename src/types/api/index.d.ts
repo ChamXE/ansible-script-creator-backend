@@ -5,7 +5,7 @@ export type Config = {
     port: number;
 };
 
-export type ResponseBody = Record<string, Json> | undefined;
+export type ResponseBody = Record<string, any> | undefined;
 
 export interface Request<
     Params extends ParamsDictionary | undefined = undefined,
