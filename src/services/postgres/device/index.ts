@@ -1,12 +1,12 @@
 import * as postgres from '@/services/postgres';
 import { Server, Router, Switch, Host } from '~/postgres/device';
 
-export async function retrieveServers(username: string): Promise<Server[]> {
+export async function retrieveServers(): Promise<Server[]> {
     const query = `
-        SELECT * FROM server WHERE username = $1;
+        SELECT * FROM server;
     `;
 
-    return (await postgres.query<Server>(query, [username]));
+    return (await postgres.query<Server>(query));
 }
 
 export async function retrieveRouters(username: string): Promise<Router[]> {
@@ -69,22 +69,21 @@ export async function retrieveHosts(username: string): Promise<Host[]> {
     return (await postgres.query<Host>(query, [username]));
 }
 
-export async function createServer({ serverid, username, servername, ip, rootcredential }: Server): Promise<void> {
+export async function createServer({ serverid, servername, ip, rootcredential }: Server): Promise<void> {
     const query = `
-        INSERT INTO server(serverid, username, servername, ip, rootcredential)
-        VALUES (${serverid ? serverid : 'nextval(\'server_serverid_seq\')'}, $1, $2, $3, $4)
+        INSERT INTO server(serverid, servername, ip, rootcredential)
+        VALUES (${serverid ? serverid : 'nextval(\'server_serverid_seq\')'}, $1, $2, $3)
         ON CONFLICT ON CONSTRAINT server_pk
         DO 
             UPDATE
             SET
                 serverid = EXCLUDED.serverid,
-                username = EXCLUDED.username,
                 servername = EXCLUDED.servername,
                 ip = EXCLUDED.ip,
                 rootcredential = EXCLUDED.rootcredential;
     `;
 
-    await postgres.query(query, [username, servername, ip, rootcredential]);
+    await postgres.query(query, [servername, ip, rootcredential]);
 }
 
 export async function createRouter({ projectid, routerid, routername, management, configuration }: Router): Promise<void> {

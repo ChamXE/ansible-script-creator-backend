@@ -1,6 +1,5 @@
 export interface Server {
     serverid: number;
-    username: string;
     servername: string;
     ip: string;
     rootcredential: User;

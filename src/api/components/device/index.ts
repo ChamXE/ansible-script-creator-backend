@@ -3,7 +3,7 @@ import * as controller from './controller';
 
 const deviceRouter = express.Router();
 
-deviceRouter.get('/server/:username', controller.retrieveServers);
+deviceRouter.get('/server', controller.retrieveServers);
 deviceRouter.get('/router/:username', controller.retrieveRouters);
 deviceRouter.get('/switch/:username', controller.retrieveSwitches);
 deviceRouter.get('/host/:username', controller.retrieveHosts);

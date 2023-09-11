@@ -8,7 +8,7 @@ const log = logger('API', 'DEVICE');
 
 export async function retrieveServers(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const result = await device.retrieveServers(request.params.username);
+        const result = await device.retrieveServers();
         success(response, { server: result });
     } catch (e) {
         log.error(e);
