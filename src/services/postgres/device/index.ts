@@ -3,7 +3,17 @@ import { Server, Router, Switch, Host } from '~/postgres/device';
 
 export async function retrieveServers(): Promise<Server[]> {
     const query = `
-        SELECT * FROM server;
+        SELECT
+            s.serverid,
+            s.servername,
+            s.ip,
+            s.rootcredential,
+            COUNT(p.serverid) as count
+        FROM server s
+        LEFT JOIN project p
+        ON p.serverid = s.serverid
+        GROUP BY s.serverid
+        ORDER BY count, s.serverid;
     `;
 
     return (await postgres.query<Server>(query));
