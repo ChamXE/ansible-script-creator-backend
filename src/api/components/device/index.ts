@@ -7,6 +7,7 @@ deviceRouter.get('/server', controller.retrieveServers);
 deviceRouter.get('/router/:username', controller.retrieveRouters);
 deviceRouter.get('/switch/:username', controller.retrieveSwitches);
 deviceRouter.get('/host/:username', controller.retrieveHosts);
+deviceRouter.get('/:projectId', controller.retrieveProjectDevices);
 deviceRouter.post('/server', controller.createServer);
 deviceRouter.post('/router', controller.createRouter);
 deviceRouter.post('/switch', controller.createSwitch);

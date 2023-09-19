@@ -129,3 +129,13 @@ export async function deleteHost(request: e.Request, response: e.Response): Prom
         failure(response, e);
     }
 }
+
+export async function retrieveProjectDevices(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const result = await device.retrieveProjectDevices(+request.params.projectId);
+        success(response, { ...result })
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}

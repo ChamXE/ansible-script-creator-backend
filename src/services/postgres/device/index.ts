@@ -1,5 +1,5 @@
 import * as postgres from '@/services/postgres';
-import { Server, Router, Switch, Host } from '~/postgres/device';
+import { Server, Router, Switch, Host, ProjectDevice } from '~/postgres/device';
 
 export async function retrieveServers(): Promise<Server[]> {
     const query = `
@@ -180,4 +180,28 @@ export async function deleteHost(hostId: string): Promise<void> {
     `;
 
     await postgres.query(query, [hostId]);
+}
+
+export async function retrieveProjectDevices(projectId: number): Promise<ProjectDevice> {
+    const queryRouter = `
+        SELECT * FROM router WHERE projectid = $1;
+    `;
+
+    const querySwitch = `
+        SELECT * FROM switch WHERE projectid = $1;
+    `;
+
+    const queryHost = `
+        SELECT * FROM host WHERE projectid = $1;
+    `;
+
+    const router: Router[] = await postgres.query<Router>(queryRouter, [projectId]);
+    const switchR: Switch[] = await postgres.query<Switch>(querySwitch, [projectId]);
+    const host: Host[] = await postgres.query<Host>(queryHost, [projectId]);
+
+    return {
+        router: router,
+        switch: switchR,
+        host: host
+    }
 }
