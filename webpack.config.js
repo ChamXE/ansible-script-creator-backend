@@ -62,4 +62,7 @@ module.exports = {
         aggregateTimeout: 500,
         poll: 1000,
     },
+    experiments: {
+        topLevelAwait: true
+    }
 };
