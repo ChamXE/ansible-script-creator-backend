@@ -1,23 +1,45 @@
 import type { Config } from '~/api';
-
+import type { Config as DBConfig }  from '~/postgres';
 import cors from 'cors';
 import config from 'config';
 import logger from 'logger';
 import express from 'express';
 import router from './router';
-import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import genFunc from 'connect-pg-simple';
 import listEndpoints from 'express-list-endpoints';
 
-const { port } = config.get<Config>('api');
+const { port, secret } = config.get<Config>('api');
+const {
+    host,
+    port: dbPort,
+    user,
+    password,
+    database
+} = config.get<DBConfig>('postgres');
+const oneDay = 1000 * 60 * 60 * 24;
+const PostgresqlStore = genFunc(session);
+export const sessionStore = new PostgresqlStore({
+    conString: `postgres://${user}:${password}@${host}:${dbPort}/${database}`,
+});
 
 const log = logger('LOADER', 'API');
 
 const app = express();
 
-app.set('trust proxy', true);
-app.use(cors());
-app.use(cookieParser());
+app.set('trust proxy', 1)
+app.use(cors({ credentials: true, origin: "https://fyp-***REMOVED***.me" }));
 app.use(express.json());
+app.use(session({
+    secret: secret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: true,
+        maxAge: oneDay
+    }, // define cookieOptions
+    store: sessionStore,
+}));
 
 app.use('/', router);
 app.listen(port, () => {

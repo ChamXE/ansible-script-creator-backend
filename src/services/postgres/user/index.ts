@@ -1,20 +1,6 @@
 import * as postgres from '@/services/postgres';
 import { Credentials, User } from '~/postgres/user';
 
-export async function validateUser(credentials: Credentials): Promise<Token | null> {
-    const query = `
-        SELECT password FROM account WHERE username = $1;
-    `;
-    const result = (await postgres.query<{ password: string }>(query, [credentials.username])).pop();
-    if (result && result.password === credentials.password) {
-        return {
-            "username": credentials.username,
-            "token": "blablabla"
-        }
-    }
-
-    return null;
-}
 
 export async function registerUser({ username, password, email }: User): Promise<void> {
     const query = `
@@ -29,10 +15,7 @@ export async function checkUsernameAvailability(username: string): Promise<boole
         SELECT username FROM account WHERE username = $1;
     `;
     const result = (await postgres.query<{ username: string }>(query, [username])).pop();
-    if (result) {
-        return false;
-    }
-    return true;
+    return !result;
 }
 
 export async function getUser(username: string): Promise<User | null> {
@@ -59,4 +42,12 @@ export async function changePassword(passwords: Credentials): Promise<void> {
         WHERE username = $1;
     `;
     await postgres.query(query, [passwords.username, passwords.newPassword]);
+}
+
+export async function checkSessionExist(sessionId: string): Promise<boolean> {
+    const query = `
+        SELECT expire FROM session WHERE sid = $1;
+    `
+    const result = (await postgres.query<{ expire: number }>(query, [sessionId])).pop()
+    return !!result;
 }

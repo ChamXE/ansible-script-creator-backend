@@ -7,8 +7,9 @@ import projectRouter from './components/project';
 
 const router = express.Router();
 
-router.use(middleware.logRequest);
 router.use('/user', userRouter);
+router.use(middleware.authorizeRequest);
+router.use(middleware.logRequest);
 router.use('/device', deviceRouter);
 router.use('/project', projectRouter);
 

@@ -2,6 +2,7 @@ const projectId = 'fyp';
 
 exports.api = {
     port: 8080,
+    secret: '',
 };
 
 exports.influx = {

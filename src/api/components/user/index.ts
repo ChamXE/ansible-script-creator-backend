@@ -8,5 +8,6 @@ userRouter.post('/registerUser', controller.registerUser);
 userRouter.post('/changePassword', controller.changePassword);
 userRouter.get('/:username', controller.getUser);
 userRouter.get('/checkUsernameAvailability/:username', controller.checkUsernameAvailability);
+userRouter.post('/logout', controller.logoutUser);
 
 export default userRouter;
