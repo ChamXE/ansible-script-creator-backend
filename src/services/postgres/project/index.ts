@@ -1,5 +1,5 @@
 import * as postgres from '@/services/postgres';
-import { Project, RouterSwitch, SwitchSwitch, SwitchHost } from '~/postgres/project';
+import {Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo} from '~/postgres/project';
 
 export async function retrieveProjects(username: string): Promise<Project[]> {
     const query = `
@@ -200,4 +200,93 @@ export async function updateSwitchHost(oldInfo: SwitchHost, newInfo: SwitchHost)
         projectid, switchid, hostid, portname, 
         oldProjectId, oldSwitchId, oldHostId
     ]);
+}
+
+export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[]> {
+    const query = `
+        SELECT
+            r.routername,
+            rs.portname,
+            rs.ip,
+            rs.subnet,
+            r.configuration -> 'users' as users,
+            r.configuration -> 'routes' as routes
+        FROM router r
+        LEFT JOIN router_switch rs
+        ON r.projectid = rs.projectid AND r.routerid = rs.routerid
+        WHERE r.projectid = $1
+        GROUP BY r.routerid, rs.portname, rs.ip, rs.subnet;
+    `;
+
+    return (await postgres.query<RouterInfo>(query, [projectId]));
+}
+
+export async function retrieveSwitchInfo(projectId: number): Promise<SwitchInfo[]> {
+    const query = `
+        SELECT
+            q2.switchname,
+            q2.stp,
+            q2.controller,
+            jsonb_strip_nulls(q2.patch) as patch,
+            array_remove(array_cat(access, array_agg(sh.portname)), null) as access
+        FROM (
+            SELECT
+                q1.*,
+                array_remove(array_agg(DISTINCT rs.portname), null) as access
+            FROM (
+                SELECT
+                    s.projectid,
+                    s.switchname,
+                    s.switchid,
+                    s.stp,
+                    s.controller,
+                    jsonb_agg(jsonb_strip_nulls(jsonb_build_object('patch', ss1.portname, 'peer', ss2.portname))) as patch
+                FROM switch s
+                LEFT JOIN switch_switch ss1
+                ON s.projectid = ss1.projectid AND ss1.switchid_src = s.switchid
+                LEFT JOIN switch_switch ss2
+                ON s.projectid = ss2.projectid AND ss2.switchid_dst = s.switchid AND ss2.switchid_src = ss1.switchid_dst
+                WHERE s.projectid = $1
+                GROUP BY s.switchid, s.switchname
+            ) q1
+            LEFT JOIN router_switch rs
+            ON q1.projectid = rs.projectid AND q1.switchid = rs.switchid
+            GROUP BY q1.projectid, q1.switchid, q1.switchname, q1.stp, q1.controller, q1.patch
+        ) q2
+        LEFT JOIN switch_host sh
+        ON q2.projectid = sh.projectid AND sh.switchid = q2.switchid
+        GROUP BY q2.projectid, q2.switchname, q2.stp, q2.controller, q2.patch, q2.access;
+    `;
+
+    return (await postgres.query<SwitchInfo>(query, [projectId]));
+}
+
+export async function retrieveHostInfo(projectId: number): Promise<HostInfo[]> {
+    const query = `
+        SELECT
+            h.hostname,
+            h.ip,
+            h.subnet,
+            sh.portname as ovsportname,
+            concat(h.hostname, '-eth0') as clientportname,
+            rs.ip as defaultgateway
+        FROM host h
+        LEFT JOIN switch_host sh
+        ON h.projectid = sh.projectid AND h.hostid = sh.hostid
+        LEFT JOIN router_switch rs
+        ON rs.routerid = h.default
+        WHERE h.projectid = $1;
+    `;
+
+    return (await postgres.query<HostInfo>(query, [projectId]));
+}
+
+export async function retrieveServerIP(projectId: number): Promise<string> {
+    const query = `
+        SELECT ip FROM server WHERE serverid = (
+            SELECT serverid FROM project WHERE projectid = $1
+        );
+    `;
+
+    return (await postgres.query<{ ip: string }>(query, [projectId])).pop()?.ip ?? '';
 }

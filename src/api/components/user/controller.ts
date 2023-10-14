@@ -61,10 +61,6 @@ export async function getUser(request: e.Request, response: e.Response): Promise
 
 export async function changePassword(request: e.Request, response: e.Response): Promise<void> {
     try {
-        if(!request.session.username) {
-            response.status(401).sendStatus(401);
-            return;
-        }
         const passwordHash = await user.getPassword(request.body.username);
         if (!passwordHash) {
             success(response, { success: false });
@@ -88,10 +84,6 @@ export async function changePassword(request: e.Request, response: e.Response): 
 
 export async function logoutUser(request: e.Request, response: e.Response): Promise<void> {
     try {
-        if(!request.session.username) {
-            response.status(401).sendStatus(401);
-            return;
-        }
         request.session.destroy((err) => {
             response.clearCookie("connect.sid").send('clear cookie');
             if(err) log.error(err);

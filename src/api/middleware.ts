@@ -12,6 +12,11 @@ const PATH = './logs/api';
 if (!existsSync(PATH)) mkdirSync(PATH, { recursive: true });
 
 export async function authorizeRequest(request: Request, response: Response, next: NextFunction): Promise<void> {
+    if(/^\/user\/.*$/.test(request.path)) {
+        if(!/^\/user\/changePassword$/.test(request.path) && !/^\/user\/logout$/.test(request.path)) {
+            return next();
+        }
+    }
     const authorize = await user.checkSessionExist(request.sessionID);
     if(authorize) return next();
     const ip = request.header('X-Forwarded-For') || request.ip;

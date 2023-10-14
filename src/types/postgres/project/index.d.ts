@@ -1,8 +1,11 @@
+import {Route, RouterUser} from "~/postgres/device";
+
 export interface Project {
     projectid: number | null;
     username: string;
     projectname: string;
     serverid: number;
+    generated: boolean;
     count?: number;
 }
 
@@ -27,4 +30,35 @@ export interface SwitchHost {
     switchid: number;
     hostid: number;
     portname: string;
+}
+
+export interface RouterInfo {
+    routername: string;
+    portname: string;
+    ip: string;
+    subnet: string;
+    users?: RouterUser;
+    routes?: Route;
+}
+
+export interface SwitchInfo {
+    switchname: string;
+    stp: boolean;
+    controller: string;
+    access: string[];
+    patch: Patch[];
+}
+
+type Patch = {
+    patch: string;
+    peer: string;
+}
+
+export interface HostInfo {
+    hostname: string;
+    ip: string;
+    subnet: string;
+    ovsportname: string;
+    clientportname: string;
+    defaultgateway: string;
 }

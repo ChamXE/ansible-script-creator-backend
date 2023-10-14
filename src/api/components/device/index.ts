@@ -4,9 +4,12 @@ import * as controller from './controller';
 const deviceRouter = express.Router();
 
 deviceRouter.get('/server', controller.retrieveServers);
-deviceRouter.get('/router/:username', controller.retrieveRouters);
-deviceRouter.get('/switch/:username', controller.retrieveSwitches);
-deviceRouter.get('/host/:username', controller.retrieveHosts);
+deviceRouter.get('/routerAll/:username', controller.retrieveAllRouters);
+deviceRouter.get('/switchAll/:username', controller.retrieveAllSwitches);
+deviceRouter.get('/hostAll/:username', controller.retrieveAllHosts);
+deviceRouter.get('/router/:projectId', controller.retrieveRouters);
+deviceRouter.get('/switch/:projectId', controller.retrieveSwitches);
+deviceRouter.get('/host/:projectId', controller.retrieveHosts);
 deviceRouter.get('/:projectId', controller.retrieveProjectDevices);
 deviceRouter.post('/server', controller.createServer);
 deviceRouter.post('/router', controller.createRouter);

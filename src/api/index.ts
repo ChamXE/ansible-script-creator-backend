@@ -17,7 +17,7 @@ const {
     password,
     database
 } = config.get<DBConfig>('postgres');
-const oneDay = 1000 * 60 * 60 * 24;
+const cookieExpire = 1000 * 60 * 60;
 const PostgresqlStore = genFunc(session);
 export const sessionStore = new PostgresqlStore({
     conString: `postgres://${user}:${password}@${host}:${dbPort}/${database}`,
@@ -28,7 +28,7 @@ const log = logger('LOADER', 'API');
 const app = express();
 
 app.set('trust proxy', 1)
-app.use(cors({ credentials: true, origin: "https://fyp-***REMOVED***.me" }));
+app.use(cors({ credentials: true, origin: ["https://fyp-***REMOVED***.me","http://localhost:3000"] }));
 app.use(express.json());
 app.use(session({
     secret: secret,
@@ -36,8 +36,8 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         secure: true,
-        maxAge: oneDay
-    }, // define cookieOptions
+        maxAge: cookieExpire
+    },
     store: sessionStore,
 }));
 

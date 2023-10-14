@@ -180,3 +180,66 @@ export async function updateSwitchHost(request: e.Request, response: e.Response)
         failure(response, e);
     }
 }
+
+export async function generateProjectHostFile(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const projectId = request.params.projectId;
+        const serverIP = await project.retrieveServerIP(+projectId);
+        if(serverIP.length === 0) {
+            success(response);
+            return;
+        }
+        const routerInfo = await project.retrieveRouterInfo(+projectId);
+        const switchInfo = await project.retrieveSwitchInfo(+projectId);
+        const hostInfo = await project.retrieveHostInfo(+projectId);
+        let hostFile = `all:\n${whitespace(2)}children:\n${whitespace(4)}network:\n`;
+        hostFile += `${whitespace(6)}hosts:\n${whitespace(8)}${serverIP}:\n`;
+        hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
+        routerInfo.forEach((router) => {
+            hostFile += `${whitespace(12)}- name: ${router.routername}\n`;
+            hostFile += `${whitespace(14)}sdn_ip: ${router.ip}\n`;
+            hostFile += `${whitespace(14)}mask: ${router.subnet}\n`;
+            hostFile += `${whitespace(14)}port: ${router.portname}\n`;
+        });
+        hostFile += `${whitespace(10)}ovs:\n`;
+        switchInfo.forEach((switchR) => {
+            hostFile += `${whitespace(12)}- name: ${switchR.switchname}\n`;
+            hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
+            hostFile += `${whitespace(14)}stp: ${switchR.stp}\n`;
+            if(switchR.access.length) {
+                hostFile += `${whitespace(14)}access:\n`;
+                switchR.access.forEach((port) => {
+                    hostFile += `${whitespace(16)}- ${port}\n`;
+                });
+            }
+            if(!(switchR.patch.length === 1 && !switchR.patch[0].peer)) {
+                hostFile += `${whitespace(14)}patch:\n`;
+                switchR.patch.forEach(({patch, peer}) => {
+                    hostFile += `${whitespace(16)}- name: ${patch}\n`;
+                    hostFile += `${whitespace(18)}peer: ${peer}\n`;
+                });
+            }
+        });
+        if(hostInfo.length) {
+            hostFile += `${whitespace(10)}namespaces:\n`;
+            hostInfo.forEach((host) => {
+                hostFile += `${whitespace(12)}- name: ${host.hostname}\n`;
+                hostFile += `${whitespace(14)}ip: ${host.ip}\n`;
+                hostFile += `${whitespace(14)}mask: ${host.subnet}\n`;
+                hostFile += `${whitespace(14)}ovsportname: ${host.ovsportname}\n`;
+                hostFile += `${whitespace(14)}clientportname: ${host.clientportname}\n`;
+                hostFile += `${whitespace(14)}defaultgateway: ${host.defaultgateway}\n`;
+            });
+        }
+        hostFile += `${whitespace(4)}ungrouped: {}`;
+        console.log(hostFile);
+        success(response, { template: hostFile });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
+function whitespace(n: number): string {
+    return new Array(n + 1).join(' ');
+}

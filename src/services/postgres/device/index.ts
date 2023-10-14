@@ -19,7 +19,28 @@ export async function retrieveServers(): Promise<Server[]> {
     return (await postgres.query<Server>(query));
 }
 
-export async function retrieveRouters(username: string): Promise<Router[]> {
+export async function retrieveRouters(projectId: number): Promise<Router[]> {
+    const query = `
+        SELECT * FROM router WHERE projectid = $1;
+    `;
+    return (await postgres.query<Router>(query, [projectId]));
+}
+
+export async function retrieveSwitches(projectId: number): Promise<Switch[]> {
+    const query = `
+        SELECT * FROM switch WHERE projectid = $1;
+    `;
+    return (await postgres.query<Switch>(query, [projectId]));
+}
+
+export async function retrieveHosts(projectId: number): Promise<Host[]> {
+    const query = `
+        SELECT * FROM host WHERE projectid = $1;
+    `;
+    return (await postgres.query<Host>(query, [projectId]));
+}
+
+export async function retrieveAllRouters(username: string): Promise<Router[]> {
     const query = `
         SELECT
             r.routerid,
@@ -39,7 +60,7 @@ export async function retrieveRouters(username: string): Promise<Router[]> {
     return (await postgres.query<Router>(query, [username]));
 }
 
-export async function retrieveSwitches(username: string): Promise<Switch[]> {
+export async function retrieveAllSwitches(username: string): Promise<Switch[]> {
     const query = `
         SELECT
             s.switchid,
@@ -59,7 +80,7 @@ export async function retrieveSwitches(username: string): Promise<Switch[]> {
     return (await postgres.query<Switch>(query, [username]));
 }
 
-export async function retrieveHosts(username: string): Promise<Host[]> {
+export async function retrieveAllHosts(username: string): Promise<Host[]> {
     const query = `
         SELECT
             h.hostid,

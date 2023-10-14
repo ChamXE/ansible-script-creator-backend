@@ -18,7 +18,7 @@ export async function retrieveServers(request: e.Request, response: e.Response):
 
 export async function retrieveRouters(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const result = await device.retrieveRouters(request.params.username);
+        const result = await device.retrieveRouters(+request.params.projectId);
         success(response, { router: result });
     } catch (e) {
         log.error(e);
@@ -28,7 +28,7 @@ export async function retrieveRouters(request: e.Request, response: e.Response):
 
 export async function retrieveSwitches(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const result = await device.retrieveSwitches(request.params.username);
+        const result = await device.retrieveSwitches(+request.params.projectId);
         success(response, { switch: result });
     } catch (e) {
         log.error(e);
@@ -38,7 +38,37 @@ export async function retrieveSwitches(request: e.Request, response: e.Response)
 
 export async function retrieveHosts(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const result = await device.retrieveHosts(request.params.username);
+        const result = await device.retrieveHosts(+request.params.projectId);
+        success(response, { host: result });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
+export async function retrieveAllRouters(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const result = await device.retrieveAllRouters(request.params.username);
+        success(response, { router: result });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
+export async function retrieveAllSwitches(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const result = await device.retrieveAllSwitches(request.params.username);
+        success(response, { switch: result });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
+export async function retrieveAllHosts(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const result = await device.retrieveAllHosts(request.params.username);
         success(response, { host: result });
     } catch (e) {
         log.error(e);
