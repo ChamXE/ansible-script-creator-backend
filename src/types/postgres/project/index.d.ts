@@ -37,13 +37,12 @@ export interface RouterInfo {
     portname: string;
     ip: string;
     subnet: string;
-    users?: RouterUser;
-    routes?: Route;
+    users: RouterUser[];
+    routes: Route[];
 }
 
 export interface SwitchInfo {
     switchname: string;
-    stp: boolean;
     controller: string;
     access: string[];
     patch: Patch[];
@@ -58,7 +57,8 @@ export interface HostInfo {
     hostname: string;
     ip: string;
     subnet: string;
+    ovs: string;
     ovsportname: string;
-    clientportname: string;
+    hostportname: string;
     defaultgateway: string;
 }

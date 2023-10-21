@@ -9,9 +9,9 @@ export async function setInterfaceUp(serverId:number, interfaceName: string): Pr
 }
 
 export async function addBridge(serverId: number, switchInfo: Switch): Promise<SSHResponse> {
-    const { switchname, controller, stp } = switchInfo
+    const { switchname, controller  } = switchInfo
     const createBridgeResult = await servers[serverId].executeCommand(
-        `sudo ovs-vsctl add-br ${switchname} -- set bridge ${switchname} stp_enable=${stp}`,
+        `sudo ovs-vsctl add-br ${switchname} -- set bridge ${switchname}`,
     );
     if(!createBridgeResult.code) {
         const setControllerResult = await setController(serverId, switchname, controller);

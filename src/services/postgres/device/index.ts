@@ -66,7 +66,6 @@ export async function retrieveAllSwitches(username: string): Promise<Switch[]> {
             s.switchid,
             s.switchname,
             s.projectid,
-            s.stp,
             s.controller
         FROM (
             SELECT
@@ -135,10 +134,10 @@ export async function createRouter({ projectid, routerid, routername, management
     await postgres.query(query, [projectid, routername, management, configuration]);
 }
 
-export async function createSwitch({ projectid, switchid, switchname, stp, controller }: Switch): Promise<void> {
+export async function createSwitch({ projectid, switchid, switchname, controller }: Switch): Promise<void> {
     const query = `
-        INSERT INTO switch(projectid, switchid, switchname, stp, controller)
-        VALUES ($1, ${switchid ? switchid : 'nextval(\'switch_switchid_seq\')'}, $2, $3, $4)
+        INSERT INTO switch(projectid, switchid, switchname, controller)
+        VALUES ($1, ${switchid ? switchid : 'nextval(\'switch_switchid_seq\')'}, $2, $3)
         ON CONFLICT ON CONSTRAINT switch_pk
         DO 
             UPDATE
@@ -146,11 +145,10 @@ export async function createSwitch({ projectid, switchid, switchname, stp, contr
                 projectid = EXCLUDED.projectid,
                 switchid = EXCLUDED.switchid,
                 switchname = EXCLUDED.switchname,
-                stp = EXCLUDED.stp,
                 controller = EXCLUDED.controller;
     `;
 
-    await postgres.query(query, [projectid, switchname, stp, controller]);
+    await postgres.query(query, [projectid, switchname, controller]);
 }
 
 export async function createHost({ projectid, hostid, hostname, ip, subnet }: Host): Promise<void> {
