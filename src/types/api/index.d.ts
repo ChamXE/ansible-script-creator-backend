@@ -1,6 +1,5 @@
 import type e from 'express';
 import type { ParamsDictionary, Query } from 'express-serve-static-core';
-import session from 'express-session';
 
 export type Config = {
     port: number;

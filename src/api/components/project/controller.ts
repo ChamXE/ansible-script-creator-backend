@@ -1,10 +1,13 @@
 import type e from 'express';
 import logger from 'logger';
+import fs from 'fs';
 import * as project from '@/services/postgres/project';
 import { success, failure } from '@/api/util';
 import { Project, RouterSwitch, SwitchHost, SwitchSwitch } from '@/types/postgres/project';
 
 const log = logger('API', 'PROJECT');
+const hostFilePath = './execution';
+if (!fs.existsSync(hostFilePath)) fs.mkdirSync(hostFilePath, { recursive: true });
 
 export async function retrieveProjects(request: e.Request, response: e.Response): Promise<void> {
     try {
@@ -181,63 +184,100 @@ export async function updateSwitchHost(request: e.Request, response: e.Response)
     }
 }
 
-export async function generateProjectHostFile(request: e.Request, response: e.Response): Promise<void> {
+export async function generateProject(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const projectId = request.params.projectId;
-        const serverIP = await project.retrieveServerIP(+projectId);
-        if(serverIP.length === 0) {
+        const projectId = +request.params.projectId;
+        const result = await generateHostFile(projectId);
+        if(!result) {
             success(response);
             return;
         }
-        const routerInfo = await project.retrieveRouterInfo(+projectId);
-        const switchInfo = await project.retrieveSwitchInfo(+projectId);
-        const hostInfo = await project.retrieveHostInfo(+projectId);
-        let hostFile = `all:\n${whitespace(2)}children:\n${whitespace(4)}network:\n`;
-        hostFile += `${whitespace(6)}hosts:\n${whitespace(8)}${serverIP}:\n`;
-        hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
-        routerInfo.forEach((router) => {
-            hostFile += `${whitespace(12)}- name: ${router.routername}\n`;
-            hostFile += `${whitespace(14)}sdn_ip: ${router.ip}\n`;
-            hostFile += `${whitespace(14)}mask: ${router.subnet}\n`;
-            hostFile += `${whitespace(14)}port: ${router.portname}\n`;
-        });
-        hostFile += `${whitespace(10)}ovs:\n`;
-        switchInfo.forEach((switchR) => {
-            hostFile += `${whitespace(12)}- name: ${switchR.switchname}\n`;
-            hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
-            hostFile += `${whitespace(14)}stp: ${switchR.stp}\n`;
-            if(switchR.access.length) {
-                hostFile += `${whitespace(14)}access:\n`;
-                switchR.access.forEach((port) => {
-                    hostFile += `${whitespace(16)}- ${port}\n`;
-                });
-            }
-            if(!(switchR.patch.length === 1 && !switchR.patch[0].peer)) {
-                hostFile += `${whitespace(14)}patch:\n`;
-                switchR.patch.forEach(({patch, peer}) => {
-                    hostFile += `${whitespace(16)}- name: ${patch}\n`;
-                    hostFile += `${whitespace(18)}peer: ${peer}\n`;
-                });
-            }
-        });
-        if(hostInfo.length) {
-            hostFile += `${whitespace(10)}namespaces:\n`;
-            hostInfo.forEach((host) => {
-                hostFile += `${whitespace(12)}- name: ${host.hostname}\n`;
-                hostFile += `${whitespace(14)}ip: ${host.ip}\n`;
-                hostFile += `${whitespace(14)}mask: ${host.subnet}\n`;
-                hostFile += `${whitespace(14)}ovsportname: ${host.ovsportname}\n`;
-                hostFile += `${whitespace(14)}clientportname: ${host.clientportname}\n`;
-                hostFile += `${whitespace(14)}defaultgateway: ${host.defaultgateway}\n`;
-            });
-        }
-        hostFile += `${whitespace(4)}ungrouped: {}`;
-        console.log(hostFile);
-        success(response, { template: hostFile });
+        success(response, { result: true });
     } catch (e) {
         log.error(e);
         failure(response, e);
     }
+}
+
+async function generateHostFile(projectId: number): Promise<number> {
+    const serverIP = await project.retrieveServerIP(projectId);
+    if(serverIP.length === 0) {
+        return 0;
+    }
+    const routerInfo = await project.retrieveRouterInfo(projectId);
+    const switchInfo = await project.retrieveSwitchInfo(projectId);
+    const hostInfo = await project.retrieveHostInfo(projectId);
+    let hostFile = `all:\n${whitespace(2)}children:\n${whitespace(4)}network:\n`;
+    hostFile += `${whitespace(6)}hosts:\n${whitespace(8)}${serverIP}:\n`;
+    hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
+    routerInfo.forEach((router) => {
+        hostFile += `${whitespace(12)}- name: ${router.routername}\n`;
+        hostFile += `${whitespace(14)}sdn_ip: ${router.ip}\n`;
+        hostFile += `${whitespace(14)}mask: ${router.subnet}\n`;
+        hostFile += `${whitespace(14)}port: ${router.portname}\n`;
+        if(router.users.length) {
+            hostFile += `${whitespace(14)}users:\n`;
+            router.users.forEach(({ username, password, privilege }) => {
+               hostFile += `${whitespace(16)}- username: ${username}\n`;
+               hostFile += `${whitespace(18)}password: ${password}\n`;
+               hostFile += `${whitespace(18)}privilege: ${privilege}\n`;
+            });
+        }
+        hostFile += `${whitespace(14)}routes:\n`;
+        if(router.routes.length) {
+            router.routes.forEach((route) => {
+                hostFile += `${whitespace(16)}- prefix: ${route.prefix}\n`;
+                hostFile += `${whitespace(18)}mask: ${route.mask}\n`;
+                if(route.exitGateway) hostFile += `${whitespace(18)}exitGateway: ${route.exitGateway}\n`;
+                if(route.exitInterface) hostFile += `${whitespace(18)}exitInterface: ${route.exitInterface}\n`;
+                if(route.metric) hostFile += `${whitespace(18)}metric: ${route.metric}\n`;
+            });
+        }
+        else {
+            hostFile += `${whitespace(16)}- prefix: 0.0.0.0\n`;
+            hostFile += `${whitespace(18)}mask: 0.0.0.0\n`;
+            hostFile += `${whitespace(18)}exitInterface: GigabitEthernet2\n`;
+        }
+    });
+    hostFile += `${whitespace(10)}ovs:\n`;
+    switchInfo.forEach((switchR) => {
+        hostFile += `${whitespace(12)}- name: ${switchR.switchname}\n`;
+        hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
+        if(switchR.access.length) {
+            hostFile += `${whitespace(14)}access:\n`;
+            switchR.access.forEach((port) => {
+                hostFile += `${whitespace(16)}- ${port}\n`;
+            });
+        }
+        if(!(switchR.patch.length === 1 && !switchR.patch[0].peer)) {
+            hostFile += `${whitespace(14)}patch:\n`;
+            switchR.patch.forEach(({patch, peer}) => {
+                hostFile += `${whitespace(16)}- name: ${patch}\n`;
+                hostFile += `${whitespace(18)}peer: ${peer}\n`;
+            });
+        }
+    });
+    if(hostInfo.length) {
+        hostFile += `${whitespace(10)}namespaces:\n`;
+        hostInfo.forEach((host) => {
+            hostFile += `${whitespace(12)}- name: ${host.hostname}\n`;
+            hostFile += `${whitespace(14)}ip: ${host.ip}\n`;
+            hostFile += `${whitespace(14)}mask: ${host.subnet}\n`;
+            hostFile += `${whitespace(14)}ovs: ${host.ovs}\n`;
+            hostFile += `${whitespace(14)}ovsportname: ${host.ovsportname}\n`;
+            hostFile += `${whitespace(14)}hostportname: ${host.hostportname}\n`;
+            hostFile += `${whitespace(14)}defaultgateway: ${host.defaultgateway}\n`;
+        });
+    }
+    hostFile += `${whitespace(4)}ungrouped: {}\n`;
+    fs.writeFile(`${hostFilePath}/${projectId}.yaml`, hostFile, (err) => {
+        if(err) {
+            log.error('Host file generation failed!');
+            return 0;
+        }
+        log.info('Host file generated successfully!');
+    });
+    return 1;
 }
 
 function whitespace(n: number): string {

@@ -11,7 +11,7 @@ projectRouter.post('/', controller.createProject)
 projectRouter.post('/routerSwitch', controller.createRouterSwitch);
 projectRouter.post('/switchSwitch', controller.createSwitchSwitch);
 projectRouter.post('/switchHost', controller.createSwitchHost);
-projectRouter.post('/generateProject/:projectId', controller.generateProjectHostFile);
+projectRouter.post('/generateProject/:projectId', controller.generateProject);
 projectRouter.put('/routerSwitch', controller.updateRouterSwitch);
 projectRouter.put('/switchSwitch', controller.updateSwitchSwitch);
 projectRouter.put('/switchHost', controller.updateSwitchHost);
