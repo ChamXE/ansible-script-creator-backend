@@ -9,7 +9,7 @@ import session from 'express-session';
 import genFunc from 'connect-pg-simple';
 import listEndpoints from 'express-list-endpoints';
 
-const { port, secret } = config.get<Config>('api');
+const { port, secret, cookieExpire } = config.get<Config>('api');
 const {
     host,
     port: dbPort,
@@ -17,8 +17,8 @@ const {
     password,
     database
 } = config.get<DBConfig>('postgres');
-const cookieExpire = 1000 * 60 * 60;
 const PostgresqlStore = genFunc(session);
+
 export const sessionStore = new PostgresqlStore({
     conString: `postgres://${user}:${password}@${host}:${dbPort}/${database}`,
 });

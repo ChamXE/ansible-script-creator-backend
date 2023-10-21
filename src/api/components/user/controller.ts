@@ -3,9 +3,12 @@ import logger from 'logger';
 import bcrypt from 'bcrypt';
 import * as user from '@/services/postgres/user';
 import { success, failure } from '@/api/util';
-import {sessionStore} from "@/api";
+import dayjs from "dayjs";
+import config from "config";
+import type { Config } from "~/api";
 
 const log = logger('API', 'USER');
+const { cookieExpire } = config.get<Config>('api');
 
 export async function validateUser(request: e.Request, response: e.Response): Promise<void> {
     try {
@@ -14,7 +17,10 @@ export async function validateUser(request: e.Request, response: e.Response): Pr
         if(passwordHash) {
             if(await bcrypt.compare(password, passwordHash)) {
                 request.session.username = username;
-                return success(response, { "username": username });
+                return success(response, {
+                    "username": username,
+                    "expire": dayjs().add(cookieExpire, 'ms').toDate()
+                });
             }
         }
         return success(response);

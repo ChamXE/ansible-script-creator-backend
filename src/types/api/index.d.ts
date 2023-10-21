@@ -5,6 +5,7 @@ import session from 'express-session';
 export type Config = {
     port: number;
     secret: string;
+    cookieExpire: number;
 };
 
 export type ResponseBody = Record<string, any> | undefined;
