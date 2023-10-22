@@ -1,5 +1,6 @@
 import * as postgres from '@/services/postgres';
-import {Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo} from '~/postgres/project';
+import { Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo } from '~/postgres/project';
+import { Server } from "~/postgres/device";
 
 export async function retrieveProjects(username: string): Promise<Project[]> {
     const query = `
@@ -275,14 +276,14 @@ export async function retrieveHostInfo(projectId: number): Promise<HostInfo[]> {
     return (await postgres.query<HostInfo>(query, [projectId]));
 }
 
-export async function retrieveServerIP(projectId: number): Promise<string> {
+export async function retrieveServerInfo(projectId: number): Promise<Server | null> {
     const query = `
-        SELECT ip FROM server WHERE serverid = (
+        SELECT serverid, servername, ip, rootcredential FROM server WHERE serverid = (
             SELECT serverid FROM project WHERE projectid = $1
         );
     `;
 
-    return (await postgres.query<{ ip: string }>(query, [projectId])).pop()?.ip ?? '';
+    return (await postgres.query<Server>(query, [projectId])).pop() ?? null;
 }
 
 export async function checkProjectGenerated(projectId: number): Promise<number> {
@@ -290,7 +291,7 @@ export async function checkProjectGenerated(projectId: number): Promise<number> 
         SELECT generated FROM project WHERE projectid = $1;
     `;
 
-    const generated = (await postgres.query<{ generated: boolean }>(query, [projectId])).pop();
+    const generated = (await postgres.query<{ generated: boolean }>(query, [projectId])).pop()?.generated;
     return generated ? Number(generated) : -1;
 }
 
