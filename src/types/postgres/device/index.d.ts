@@ -26,18 +26,12 @@ export interface Host {
     projectid: number;
     ip: string | null;
     subnet: string | null;
+    defaultgateway: number;
 }
 
 export interface RouterConfiguration {
     users: RouterUser[]
     routes: Route[]
-}
-
-export interface IP {
-    ip: string;
-    mask: string | number;
-    description?: string;
-    portName?: string;
 }
 
 export interface User {

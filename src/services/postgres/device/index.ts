@@ -86,7 +86,8 @@ export async function retrieveAllHosts(username: string): Promise<Host[]> {
             h.hostname,
             h.projectid,
             h.ip,
-            h.subnet
+            h.subnet,
+            h.defaultgateway
         FROM (
             SELECT
                 projectid
@@ -151,10 +152,10 @@ export async function createSwitch({ projectid, switchid, switchname, controller
     await postgres.query(query, [projectid, switchname, controller]);
 }
 
-export async function createHost({ projectid, hostid, hostname, ip, subnet }: Host): Promise<void> {
+export async function createHost({ projectid, hostid, hostname, ip, subnet, defaultgateway }: Host): Promise<void> {
     const query = `
-        INSERT INTO host(projectid, hostid, hostname, ip, subnet)
-        VALUES ($1, ${hostid ? hostid : 'nextval(\'host_hostid_seq\')'}, $2, $3, $4)
+        INSERT INTO host(projectid, hostid, hostname, ip, subnet, default)
+        VALUES ($1, ${hostid ? hostid : 'nextval(\'host_hostid_seq\')'}, $2, $3, $4, $5)
         ON CONFLICT ON CONSTRAINT host_pk
         DO 
             UPDATE
@@ -163,10 +164,11 @@ export async function createHost({ projectid, hostid, hostname, ip, subnet }: Ho
                 hostid = EXCLUDED.hostid,
                 hostname = EXCLUDED.hostname,
                 ip = EXCLUDED.ip,
-                subnet = EXCLUDED.subnet;
+                subnet = EXCLUDED.subnet,
+                defaultgateway = EXCLUDED.defaultgateway;
     `;
 
-    await postgres.query(query, [projectid, hostname, ip, subnet]);
+    await postgres.query(query, [projectid, hostname, ip, subnet, defaultgateway]);
 }
 
 export async function deleteServer(serverId: string): Promise<void> {
