@@ -1,5 +1,5 @@
 import * as device from "@/services/postgres/device";
-import { Server } from "@/services/execution/server/server";
+import { Server } from "@/services/execution/server";
 import logger from "logger";
 
 const log = logger('SERVERS');

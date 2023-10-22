@@ -1,6 +1,5 @@
 import { NodeSSH, SSHExecCommandOptions, SSHExecCommandResponse } from "node-ssh";
-import { SSHResponse }from '~/execution';
-import * as device from '@/services/postgres/device';
+import { SSHResponse }from '~/execution'
 
 export class Server {
 

@@ -1,7 +1,7 @@
 import servers from '@/services/execution/';
 import {SSHResponse} from "~/execution";
 import {Host} from "~/postgres/device";
-import {setInterfaceUp} from "@/services/execution/switch/switch";
+import {setInterfaceUp} from "@/services/execution/switch";
 
 const namespaceExec = 'sudo ip netns exec ';
 const missingError: SSHResponse = {
