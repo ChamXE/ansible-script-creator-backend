@@ -4,6 +4,7 @@ import fs from 'fs';
 import * as project from '@/services/postgres/project';
 import { success, failure } from '@/api/util';
 import { Project, RouterSwitch, SwitchHost, SwitchSwitch } from '@/types/postgres/project';
+import { createVMs } from "@/services/execution/ansible-scripts";
 
 const log = logger('API', 'PROJECT');
 const hostFilePath = './execution';
@@ -187,11 +188,18 @@ export async function updateSwitchHost(request: e.Request, response: e.Response)
 export async function generateProject(request: e.Request, response: e.Response): Promise<void> {
     try {
         const projectId = +request.params.projectId;
+        const generated = await project.checkProjectGenerated(projectId);
+        if(generated) {
+            success(response, { result: false });
+            return;
+        }
+        await project.updateProjectGenerated(projectId);
         const result = await generateHostFile(projectId);
         if(!result) {
             success(response);
             return;
         }
+        // await createVMs(projectId);
         success(response, { result: true });
     } catch (e) {
         log.error(e);

@@ -21,8 +21,8 @@ exports.mqtt = {
 exports.postgres = {
     host: 'localhost',
     port: 5432,
-    user: '***REMOVED***',
-    password: '***REMOVED***',
+    user: '',
+    password: '',
     database: projectId,
 };
 

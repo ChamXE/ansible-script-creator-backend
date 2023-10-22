@@ -45,7 +45,7 @@
     "@types/express-list-endpoints": "^6.0.0",
     "@types/express-session": "^1.17.8",
     "@types/ioredis": "^4.28.10",
-    "@types/node": "^18.7.18",
+    "@types/node": "^18.18.6",
     "@types/pg": "^8.6.5",
     "@types/ssh2": "^1.11.13",
     "@typescript-eslint/eslint-plugin": "^5.37.0",

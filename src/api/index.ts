@@ -28,7 +28,7 @@ const log = logger('LOADER', 'API');
 const app = express();
 
 app.set('trust proxy', 1)
-app.use(cors({ credentials: true, origin: ["https://fyp-***REMOVED***.me","http://localhost:3000"] }));
+app.use(cors({ credentials: true, origin: ["https://fyp-rennaux.me","http://localhost:3000"] }));
 app.use(express.json());
 app.use(session({
     secret: secret,
