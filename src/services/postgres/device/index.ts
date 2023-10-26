@@ -226,3 +226,13 @@ export async function retrieveProjectDevices(projectId: number): Promise<Project
         host: host
     }
 }
+
+export async function updateManagementIP(routerId: number, managementIP: string | null): Promise<void> {
+    const query = `
+        UPDATE router
+        SET management = $2
+        WHERE routerid = $1;
+    `;
+
+    await postgres.query(query, [routerId, managementIP]);
+}

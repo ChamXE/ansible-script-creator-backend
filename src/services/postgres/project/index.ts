@@ -10,10 +10,10 @@ export async function retrieveProjects(username: string): Promise<Project[]> {
     return (await postgres.query<Project>(query, [username]));
 }
 
-export async function createProject({ projectid, projectname, username, serverid, generated }: Project): Promise<void> {
+export async function createProject({ projectid, projectname, username, serverid, generated, ready }: Project): Promise<void> {
     const query = `
-        INSERT INTO project(projectid, projectname, username, serverid, generated)
-        VALUES (${projectid ? projectid : 'nextval(\'project_projectid_seq\')'}, $1, $2, $3, $4)
+        INSERT INTO project(projectid, projectname, username, serverid, generated, ready)
+        VALUES (${projectid ? projectid : 'nextval(\'project_projectid_seq\')'}, $1, $2, $3, $4, $5)
         ON CONFLICT ON CONSTRAINT project_pk
         DO 
             UPDATE
@@ -22,10 +22,11 @@ export async function createProject({ projectid, projectname, username, serverid
                 projectname = EXCLUDED.projectname,
                 username = EXCLUDED.username,
                 serverid = EXCLUDED.serverid,
-                generated = EXCLUDED.generated;
+                generated = EXCLUDED.generated,
+                ready = EXCLUDED.ready;
     `;
 
-    await postgres.query(query, [projectname, username, serverid, generated]);
+    await postgres.query(query, [projectname, username, serverid, generated, ready]);
 }
 
 export async function deleteProject(projectId: number): Promise<void> {
@@ -207,6 +208,7 @@ export async function updateSwitchHost(oldInfo: SwitchHost, newInfo: SwitchHost)
 export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[]> {
     const query = `
         SELECT
+            r.routerid,
             r.routername,
             rs.portname,
             rs.ip,
@@ -292,15 +294,34 @@ export async function checkProjectGenerated(projectId: number): Promise<number> 
     `;
 
     const generated = (await postgres.query<{ generated: boolean }>(query, [projectId])).pop()?.generated;
-    return generated ? Number(generated) : -1;
+    return generated !== undefined ? Number(generated) : -1;
 }
 
-export async function updateProjectGenerated(projectId: number): Promise<void> {
+export async function updateProjectGenerated(projectId: number, generated: boolean): Promise<void> {
     const query = `
         UPDATE project
-        SET generated = true
+        SET generated = $2
         WHERE projectid = $1;
     `;
 
-    await postgres.query(query, [projectId]);
+    await postgres.query(query, [projectId, generated]);
+}
+
+export async function updateReady(projectId: number, ready: boolean): Promise<void> {
+    const query = `
+        UPDATE project
+        SET ready = $2
+        WHERE projectid = $1;
+    `;
+
+    await postgres.query(query, [projectId, ready]);
+}
+
+export async function checkProjectReady(projectId: number): Promise<number> {
+    const query = `
+        SELECT ready FROM project WHERE projectid = $1;
+    `;
+
+    const ready = (await postgres.query<{ ready: boolean }>(query, [projectId])).pop()?.ready;
+    return ready !== undefined ? Number(ready) : -1;
 }

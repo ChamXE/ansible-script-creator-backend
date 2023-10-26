@@ -2,6 +2,7 @@ import type e from 'express';
 import logger from 'logger';
 import fs from 'fs';
 import * as project from '@/services/postgres/project';
+import * as device from '@/services/postgres/device';
 import { success, failure } from '@/api/util';
 import { Project, RouterSwitch, SwitchHost, SwitchSwitch } from '@/types/postgres/project';
 import * as AnsibleScript from "@/services/execution/ansible-scripts";
@@ -35,37 +36,13 @@ export async function createProject(request: e.Request, response: e.Response): P
 export async function deleteProject(request: e.Request, response: e.Response): Promise<void> {
     try {
         const projectId = +request.params.projectId;
-        const server = await project.retrieveServerInfo(projectId);
-        if(!server) {
+        const destroyProjectResult = await destroyProjectBehind(projectId);
+        if(destroyProjectResult !== 0 && destroyProjectResult !== -2) {
             success(response, { result: false });
             return;
         }
-        const { rootcredential, ip } = server;
-        const { username, password } = rootcredential;
-        const generated = await project.checkProjectGenerated(projectId);
-        if(generated === 1) {
-            const result = await generateHostFile(projectId, ip);
-            if(!result) {
-                success(response, { result: false });
-                return;
-            }
-            const deleteHostResult = await AnsibleScript.deleteHost(projectId, username, password);
-            if(deleteHostResult) {
-                success(response, { result: false });
-                return;
-            }
-            const deleteVMResult = await AnsibleScript.deleteVM(projectId, username, password);
-            if(deleteVMResult) {
-                success(response, { result: false });
-                return;
-            }
-            const deleteOVSResult = await AnsibleScript.deleteOVS(projectId, username, password);
-            if(deleteOVSResult) {
-                success(response, { result: false });
-                return;
-            }
-        }
-        // await project.deleteProject(projectId);
+        console.log('test');
+        await project.deleteProject(projectId);
         success(response, { result: true });
     } catch (e) {
         log.error(e);
@@ -228,7 +205,7 @@ export async function generateProject(request: e.Request, response: e.Response):
         const { rootcredential, ip } = server;
         const { username, password } = rootcredential;
         const generated = await project.checkProjectGenerated(projectId);
-        if(generated === 1) {
+        if(generated !== 0) {
             success(response, { result: false });
             return;
         }
@@ -238,41 +215,102 @@ export async function generateProject(request: e.Request, response: e.Response):
             return;
         }
         success(response, { result: true });
+        await project.updateProjectGenerated(projectId, true);
         const createVMResult = await AnsibleScript.createVM(projectId, username, password);
         if(createVMResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
         const setupOVSResult = await AnsibleScript.setupOVS(projectId, username, password);
         if(setupOVSResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
         const upVMResult = await AnsibleScript.onVM(projectId, username, password);
         if(upVMResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
         await sleep(4 * 60 * 1000);
         const getIPResult = await AnsibleScript.getIP(projectId, username, password);
         if(getIPResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
+        await updateManagementIP(projectId);
         const configRouterResult = await AnsibleScript.configRouter(projectId, username, password);
         if(configRouterResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
         const createHostResult = await AnsibleScript.createHost(projectId, username, password);
         if(createHostResult) {
-            success(response, { result: false });
+            await project.updateProjectGenerated(projectId, false);
             return;
         }
-        await project.updateProjectGenerated(projectId);
+        await project.updateReady(projectId, true);
     } catch (e) {
         log.error(e);
         failure(response, e);
+    }
+}
+
+export async function destroyProject(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const projectId = +request.params.projectId;
+        const destroyProjectResult = await destroyProjectBehind(projectId);
+        if(destroyProjectResult !== 0) {
+            success(response, { result: false });
+            return;
+        }
+        success(response, { result: true });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
+async function destroyProjectBehind(projectId: number): Promise<number> {
+    const server = await project.retrieveServerInfo(projectId);
+    if(!server) {
+        return 1;
+    }
+    const routerInfo = await project.retrieveRouterInfo(projectId);
+    const { rootcredential, ip } = server;
+    const { username, password } = rootcredential;
+    const generated = await project.checkProjectGenerated(projectId);
+    const ready = await project.checkProjectReady(projectId);
+    if(generated === 1 && ready === 1) {
+        const result = await generateHostFile(projectId, ip);
+        if(!result) {
+            return 1;
+        }
+        const deleteHostResult = await AnsibleScript.deleteHost(projectId, username, password);
+        if(deleteHostResult) {
+            return 1;
+        }
+        const deleteVMResult = await AnsibleScript.deleteVM(projectId, username, password);
+        if(deleteVMResult) {
+            return 1;
+        }
+        for(let i = 0; i < routerInfo.length; i++) {
+            await device.updateManagementIP(routerInfo[i].routerid, null);
+        }
+        const deleteOVSResult = await AnsibleScript.deleteOVS(projectId, username, password);
+        if(deleteOVSResult) {
+            return 1;
+        }
+        await project.updateProjectGenerated(projectId, false);
+        await project.updateReady(projectId, false);
+        return 0;
+    }
+    else if(generated === 0) {
+        log.error('Project not generated!');
+        return -2;
+    }
+    else {
+        log.error('Project does not exist!');
+        return -1;
     }
 }
 
@@ -351,6 +389,19 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
         log.info('Host file generated successfully!');
     });
     return 1;
+}
+
+async function updateManagementIP(projectId: number): Promise<void> {
+    const managementIPs = await AnsibleScript.readIP(projectId);
+    const routerInfo = await project.retrieveRouterInfo(projectId);
+    const routers = Object.keys(managementIPs);
+    routers.forEach((router) => {
+        managementIPs[router].routerid = routerInfo.filter(({ routername }) => routername === router)![0].routerid;
+    })
+    for(let i = 0; i < routers.length; i++) {
+        const { routerid, management } = managementIPs[routers[i]];
+        await device.updateManagementIP(routerid!, management);
+    }
 }
 
 function whitespace(n: number): string {

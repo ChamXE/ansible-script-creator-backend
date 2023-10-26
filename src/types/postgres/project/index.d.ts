@@ -6,6 +6,7 @@ export interface Project {
     projectname: string;
     serverid: number;
     generated: boolean;
+    ready: boolean;
     count?: number;
 }
 
@@ -33,6 +34,7 @@ export interface SwitchHost {
 }
 
 export interface RouterInfo {
+    routerid: number;
     routername: string;
     portname: string;
     ip: string;
