@@ -9,7 +9,7 @@ export interface Router {
     routerid: number;
     routername: string;
     projectid: number;
-    management: string;
+    management: string | null;
     configuration: RouterConfiguration;
 }
 

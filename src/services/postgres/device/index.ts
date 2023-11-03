@@ -154,7 +154,7 @@ export async function createSwitch({ projectid, switchid, switchname, controller
 
 export async function createHost({ projectid, hostid, hostname, ip, subnet, defaultgateway }: Host): Promise<void> {
     const query = `
-        INSERT INTO host(projectid, hostid, hostname, ip, subnet, default)
+        INSERT INTO host(projectid, hostid, hostname, ip, subnet, defaultgateway)
         VALUES ($1, ${hostid ? hostid : 'nextval(\'host_hostid_seq\')'}, $2, $3, $4, $5)
         ON CONFLICT ON CONSTRAINT host_pk
         DO 

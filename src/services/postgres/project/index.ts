@@ -62,9 +62,11 @@ export async function retrieveSwitchHost(projectId: number): Promise<SwitchHost[
 }
 
 export async function createRouterSwitch({ projectid, routerid, switchid, portname, ip, subnet }: RouterSwitch): Promise<void> {
+    const id = await checkInterfaceId(projectid, routerid);
+    const interfacename = `GigabitEthernet${id}`;
     const query = `
-        INSERT INTO router_switch(projectid, routerid, switchid, portname, ip, subnet)
-        VALUES($1, $2, $3, $4, $5, $6)
+        INSERT INTO router_switch(projectid, routerid, switchid, portname, ip, subnet, interfacename)
+        VALUES($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT ON CONSTRAINT router_switch_pk
         DO 
             UPDATE
@@ -74,10 +76,11 @@ export async function createRouterSwitch({ projectid, routerid, switchid, portna
                 switchid = EXCLUDED.switchid,
                 portname = EXCLUDED.portname,
                 ip = EXCLUDED.ip,
-                subnet = EXCLUDED.subnet;
+                subnet = EXCLUDED.subnet,
+                interfacename = EXCLUDED.interfacename;
     `;
 
-    await postgres.query(query, [projectid, routerid, switchid, portname, ip, subnet]);
+    await postgres.query(query, [projectid, routerid, switchid, portname, ip, subnet, interfacename]);
 }
 
 export async function createSwitchSwitch({ projectid, switchid_src, switchid_dst, portname }: SwitchSwitch): Promise<void> {
@@ -140,7 +143,7 @@ export async function deleteSwitchHost(projectId: number, switchId: number, host
 
 export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterSwitch): Promise<void> {
     const { 
-        projectid, routerid, switchid, portname, ip, subnet 
+        projectid, routerid, switchid, portname, ip, subnet, interfacename
     } = newInfo;
 
     const {
@@ -155,12 +158,13 @@ export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterS
             switchid = $3,
             portname = $4,
             ip = $5,
-            subnet = $6
-        WHERE projectid = $7 AND routerid = $8 AND switchid = $9;
+            subnet = $6,
+            interfacename = $7
+        WHERE projectid = $8 AND routerid = $9 AND switchid = $10;
     `;
 
     await postgres.query(query, [
-        projectid, routerid, switchid, portname, ip, subnet, 
+        projectid, routerid, switchid, portname, ip, subnet, interfacename,
         oldProjectId, oldRouterId, oldSwitchId
     ]);
 }
@@ -210,16 +214,14 @@ export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[
         SELECT
             r.routerid,
             r.routername,
-            rs.portname,
-            rs.ip,
-            rs.subnet,
+            json_object_agg(rs.portname, json_build_object('ip', rs.ip, 'subnet', rs.subnet, 'name', rs.interfacename) ORDER BY rs.interfacename) as ports,
             r.configuration -> 'users' as users,
             r.configuration -> 'routes' as routes
         FROM router r
         LEFT JOIN router_switch rs
         ON r.projectid = rs.projectid AND r.routerid = rs.routerid
-        WHERE r.projectid = $1
-        GROUP BY r.routerid, rs.portname, rs.ip, rs.subnet;
+        WHERE r.projectid = $1 AND rs.portname IS NOT NULL
+        GROUP BY r.routerid;
     `;
 
     return (await postgres.query<RouterInfo>(query, [projectId]));
@@ -269,7 +271,7 @@ export async function retrieveHostInfo(projectId: number): Promise<HostInfo[]> {
         LEFT JOIN switch_host sh
         ON h.projectid = sh.projectid AND h.hostid = sh.hostid
         LEFT JOIN router_switch rs
-        ON rs.routerid = h.defaultgateway
+        ON rs.routerid = h.defaultgateway AND rs.switchid = sh.switchid
         INNER JOIN switch s
         ON s.switchid = sh.switchid
         WHERE h.projectid = $1;
@@ -324,4 +326,13 @@ export async function checkProjectReady(projectId: number): Promise<number> {
 
     const ready = (await postgres.query<{ ready: boolean }>(query, [projectId])).pop()?.ready;
     return ready !== undefined ? Number(ready) : -1;
+}
+
+async function checkInterfaceId(projectId: number, routerId: number): Promise<number> {
+    const query = `
+        SELECT COUNT(portname) as id FROM router_switch WHERE projectid = $1 AND routerid = $2;
+    `;
+
+    const id = (await postgres.query<{id: number}>(query,[projectId, routerId])).pop()?.id;
+    return id ? id + 2 : 2;
 }

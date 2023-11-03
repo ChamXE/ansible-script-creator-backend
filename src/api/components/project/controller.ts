@@ -314,7 +314,7 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
     }
 }
 
-async function generateHostFile(projectId: number, ip: string): Promise<number> {
+export async function generateHostFile(projectId: number, ip: string): Promise<number> {
     const routerInfo = await project.retrieveRouterInfo(projectId);
     const switchInfo = await project.retrieveSwitchInfo(projectId);
     const hostInfo = await project.retrieveHostInfo(projectId);
@@ -323,9 +323,16 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
     hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
     routerInfo.forEach((router) => {
         hostFile += `${whitespace(12)}- name: ${router.routername}\n`;
-        hostFile += `${whitespace(14)}sdn_ip: ${router.ip}\n`;
-        hostFile += `${whitespace(14)}mask: ${router.subnet}\n`;
-        hostFile += `${whitespace(14)}port: ${router.portname}\n`;
+        const ovsports = Object.keys(router.ports);
+        if(ovsports.length) {
+            hostFile += `${whitespace(14)}ports:\n`;
+            ovsports.forEach((port) => {
+                hostFile += `${whitespace(16)}- ip: ${router.ports[port].ip}\n`;
+                hostFile += `${whitespace(18)}subnet: ${router.ports[port].subnet}\n`;
+                hostFile += `${whitespace(18)}name: ${router.ports[port].name}\n`;
+                hostFile += `${whitespace(18)}ovsport: ${port}\n`;
+            });
+        }
         if(router.users.length) {
             hostFile += `${whitespace(14)}users:\n`;
             router.users.forEach(({ username, password, privilege }) => {

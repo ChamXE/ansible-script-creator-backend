@@ -16,7 +16,8 @@ export interface RouterSwitch {
     switchid: number;
     portname: string;
     ip: string;
-    subnet: string;    
+    subnet: string;
+    interfacename: string | null;
 }
 
 export interface SwitchSwitch {
@@ -36,11 +37,10 @@ export interface SwitchHost {
 export interface RouterInfo {
     routerid: number;
     routername: string;
-    portname: string;
-    ip: string;
-    subnet: string;
+    ports: Ports;
     users: RouterUser[];
     routes: Route[];
+
 }
 
 export interface SwitchInfo {
@@ -53,6 +53,14 @@ export interface SwitchInfo {
 type Patch = {
     patch: string;
     peer: string;
+}
+
+type Ports = {
+    [portname: string]: {
+        ip: string;
+        subnet: string;
+        name: string;
+    }
 }
 
 export interface HostInfo {
