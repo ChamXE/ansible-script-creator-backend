@@ -17,7 +17,7 @@ export interface Switch {
     switchid: number;
     switchname: string;
     projectid: number;
-    controller: string;
+    controller: string | null;
 }
 
 export interface Host {

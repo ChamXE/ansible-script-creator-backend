@@ -194,6 +194,16 @@ export async function updateSwitchHost(request: e.Request, response: e.Response)
     }
 }
 
+export async function retrieveInterfaces(request: e.Request, response: e.Response): Promise<void> {
+    try {
+        const interfaces = await project.retrieveInterfaces(+request.params.routerId);
+        success(response, { interfaces: interfaces });
+    } catch (e) {
+        log.error(e);
+        failure(response, e);
+    }
+}
+
 export async function generateProject(request: e.Request, response: e.Response): Promise<void> {
     try {
         const projectId = +request.params.projectId;
@@ -360,7 +370,7 @@ export async function generateHostFile(projectId: number, ip: string): Promise<n
     hostFile += `${whitespace(10)}ovs:\n`;
     switchInfo.forEach((switchR) => {
         hostFile += `${whitespace(12)}- name: ${switchR.switchname}\n`;
-        hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
+        if(switchR.controller) hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
         if(switchR.access.length) {
             hostFile += `${whitespace(14)}access:\n`;
             switchR.access.forEach((port) => {

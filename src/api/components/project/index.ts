@@ -7,6 +7,7 @@ projectRouter.get('/:username', controller.retrieveProjects);
 projectRouter.get('/routerSwitch/:projectId', controller.retrieveRouterSwitch);
 projectRouter.get('/switchSwitch/:projectId', controller.retrieveSwitchSwitch);
 projectRouter.get('/switchHost/:projectId', controller.retrieveSwitchHost);
+projectRouter.get('/interfaces/:routerId', controller.retrieveInterfaces);
 projectRouter.post('/', controller.createProject)
 projectRouter.post('/routerSwitch', controller.createRouterSwitch);
 projectRouter.post('/switchSwitch', controller.createSwitchSwitch);

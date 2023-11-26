@@ -14,11 +14,13 @@ export async function addBridge(serverId: number, switchInfo: Switch): Promise<S
         `sudo ovs-vsctl add-br ${switchname} -- set bridge ${switchname}`,
     );
     if(!createBridgeResult.code) {
-        const setControllerResult = await setController(serverId, switchname, controller);
-        if(!setControllerResult.code) {
-            return (await setInterfaceUp(serverId, switchname));
+        if(controller) {
+            const setControllerResult = await setController(serverId, switchname, controller);
+            if(!setControllerResult.code) {
+                return (await setInterfaceUp(serverId, switchname));
+            }
+            return setControllerResult;
         }
-        return setControllerResult;
     }
     return createBridgeResult;
 }

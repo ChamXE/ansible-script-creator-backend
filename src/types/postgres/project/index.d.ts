@@ -72,3 +72,7 @@ export interface HostInfo {
     hostportname: string;
     defaultgateway: string;
 }
+
+export type Interfaces = {
+    [interfacename: string]: string
+}

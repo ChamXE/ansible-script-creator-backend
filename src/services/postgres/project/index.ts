@@ -1,5 +1,5 @@
 import * as postgres from '@/services/postgres';
-import { Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo } from '~/postgres/project';
+import { Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo, Interfaces } from '~/postgres/project';
 import { Server } from "~/postgres/device";
 
 export async function retrieveProjects(username: string): Promise<Project[]> {
@@ -288,6 +288,14 @@ export async function retrieveServerInfo(projectId: number): Promise<Server | nu
     `;
 
     return (await postgres.query<Server>(query, [projectId])).pop() ?? null;
+}
+
+export async function retrieveInterfaces(routerId: number): Promise<Interfaces | null> {
+    const query = `
+        SELECT json_object_agg(interfacename, ip  ORDER BY interfacename) as interfaces FROM router_switch WHERE routerid = $1;
+    `;
+    const result = (await postgres.query<{ interfaces: Interfaces }>(query, [routerId])).pop();
+    return result? result.interfaces : null;
 }
 
 export async function checkProjectGenerated(projectId: number): Promise<number> {
