@@ -337,10 +337,15 @@ export async function generateHostFile(projectId: number, ip: string): Promise<n
         if(ovsports.length) {
             hostFile += `${whitespace(14)}ports:\n`;
             ovsports.forEach((port) => {
-                hostFile += `${whitespace(16)}- ip: ${router.ports[port].ip}\n`;
-                hostFile += `${whitespace(18)}subnet: ${router.ports[port].subnet}\n`;
-                hostFile += `${whitespace(18)}name: ${router.ports[port].name}\n`;
-                hostFile += `${whitespace(18)}ovsport: ${port}\n`;
+                hostFile += `${whitespace(16)}- ${port}\n`;
+            });
+            hostFile += `${whitespace(14)}configuration:\n`;
+            ovsports.forEach((port) => {
+                router.ports[port].forEach(({ ip, subnet, name }) => {
+                    hostFile += `${whitespace(16)}- ip: ${ip}\n`;
+                    hostFile += `${whitespace(18)}subnet: ${subnet}\n`;
+                    hostFile += `${whitespace(18)}name: ${name}\n`;
+                })
             });
         }
         if(router.users.length) {

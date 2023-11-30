@@ -61,12 +61,12 @@ export async function retrieveSwitchHost(projectId: number): Promise<SwitchHost[
     return await postgres.query<SwitchHost>(query, [projectId]);
 }
 
-export async function createRouterSwitch({ projectid, routerid, switchid, portname, ip, subnet }: RouterSwitch): Promise<void> {
+export async function createRouterSwitch({ projectid, routerid, switchid, portname, configuration }: RouterSwitch): Promise<void> {
     const id = await checkInterfaceId(projectid, routerid);
     const interfacename = `GigabitEthernet${id}`;
     const query = `
-        INSERT INTO router_switch(projectid, routerid, switchid, portname, ip, subnet, interfacename)
-        VALUES($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO router_switch(projectid, routerid, switchid, portname, configuration, interfacename)
+        VALUES($1, $2, $3, $4, $5, $6)
         ON CONFLICT ON CONSTRAINT router_switch_pk
         DO 
             UPDATE
@@ -75,12 +75,11 @@ export async function createRouterSwitch({ projectid, routerid, switchid, portna
                 routerid = EXCLUDED.routerid,
                 switchid = EXCLUDED.switchid,
                 portname = EXCLUDED.portname,
-                ip = EXCLUDED.ip,
-                subnet = EXCLUDED.subnet,
+                configuration = EXCLUDED.configuration,
                 interfacename = EXCLUDED.interfacename;
     `;
 
-    await postgres.query(query, [projectid, routerid, switchid, portname, ip, subnet, interfacename]);
+    await postgres.query(query, [projectid, routerid, switchid, portname, configuration, interfacename]);
 }
 
 export async function createSwitchSwitch({ projectid, switchid_src, switchid_dst, portname }: SwitchSwitch): Promise<void> {
@@ -143,7 +142,7 @@ export async function deleteSwitchHost(projectId: number, switchId: number, host
 
 export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterSwitch): Promise<void> {
     const { 
-        projectid, routerid, switchid, portname, ip, subnet, interfacename
+        projectid, routerid, switchid, portname, configuration, interfacename
     } = newInfo;
 
     const {
@@ -157,14 +156,13 @@ export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterS
             routerid = $2,
             switchid = $3,
             portname = $4,
-            ip = $5,
-            subnet = $6,
-            interfacename = $7
-        WHERE projectid = $8 AND routerid = $9 AND switchid = $10;
+            configuration = $5,
+            interfacename = $6
+        WHERE projectid = $7 AND routerid = $8 AND switchid = $9;
     `;
 
     await postgres.query(query, [
-        projectid, routerid, switchid, portname, ip, subnet, interfacename,
+        projectid, routerid, switchid, portname, configuration, interfacename,
         oldProjectId, oldRouterId, oldSwitchId
     ]);
 }
@@ -212,16 +210,35 @@ export async function updateSwitchHost(oldInfo: SwitchHost, newInfo: SwitchHost)
 export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[]> {
     const query = `
         SELECT
-            r.routerid,
-            r.routername,
-            json_object_agg(rs.portname, json_build_object('ip', rs.ip, 'subnet', rs.subnet, 'name', rs.interfacename) ORDER BY rs.interfacename) as ports,
-            r.configuration -> 'users' as users,
-            r.configuration -> 'routes' as routes
-        FROM router r
-        LEFT JOIN router_switch rs
-        ON r.projectid = rs.projectid AND r.routerid = rs.routerid
-        WHERE r.projectid = $1 AND rs.portname IS NOT NULL
-        GROUP BY r.routerid;
+            q2.routerid,
+            q2.routername,
+            json_object_agg(q2.portname, q2.ports) as ports,
+            q2.users,
+            q2.routes
+        FROM
+            (SELECT
+                q1.routerid,
+                q1.routername,
+                q1.portname,
+                json_agg(json_build_object('ip', q1.key, 'subnet', q1.configuration ->> key, 'name', q1.interfacename)) as ports,
+                q1.users,
+                q1.routes
+            FROM
+                (SELECT
+                    r.routerid,
+                    r.routername,
+                    rs.interfacename,
+                    rs.portname,
+                    jsonb_object_keys(rs.configuration) as key, rs.configuration,
+                    r.configuration -> 'users' as users,
+                    r.configuration -> 'routes' as routes
+                FROM router r
+                LEFT JOIN router_switch rs
+                ON r.projectid = rs.projectid AND r.routerid = rs.routerid
+                WHERE r.projectid = $1 AND rs.portname IS NOT NULL
+                GROUP BY r.routerid, rs.projectid, rs.switchid, rs.configuration, interfacename, portname) q1
+            GROUP BY routerid, routername, users, routes, portname) q2
+        GROUP BY routerid, routername, users, routes;
     `;
 
     return (await postgres.query<RouterInfo>(query, [projectId]));
@@ -251,7 +268,7 @@ export async function retrieveSwitchInfo(projectId: number): Promise<SwitchInfo[
         ) q1
         LEFT JOIN router_switch rs
         ON q1.projectid = rs.projectid AND q1.switchid = rs.switchid
-        GROUP BY q1.projectid, q1.switchid, q1.switchname, q1.controller, q1.patch
+        GROUP BY q1.projectid, q1.switchid, q1.switchname, q1.controller, q1.patch;
     `;
 
     return (await postgres.query<SwitchInfo>(query, [projectId]));
@@ -266,7 +283,7 @@ export async function retrieveHostInfo(projectId: number): Promise<HostInfo[]> {
             s.switchname as ovs,
             sh.portname as ovsportname,
             concat(h.hostname, '-eth0') as hostportname,
-            rs.ip as defaultgateway
+            jsonb_object_keys(rs.configuration) as defaultgateway
         FROM host h
         LEFT JOIN switch_host sh
         ON h.projectid = sh.projectid AND h.hostid = sh.hostid
@@ -292,7 +309,21 @@ export async function retrieveServerInfo(projectId: number): Promise<Server | nu
 
 export async function retrieveInterfaces(routerId: number): Promise<Interfaces | null> {
     const query = `
-        SELECT json_object_agg(interfacename, ip  ORDER BY interfacename) as interfaces FROM router_switch WHERE routerid = $1;
+        SELECT
+            json_object_agg(q2.interfacename, q2.ip) as interfaces
+        FROM (
+            SELECT
+                q1.interfacename,
+                json_agg(q1.ip) as ip
+            FROM (
+                SELECT
+                    interfacename,
+                    jsonb_object_keys(configuration) as ip
+                FROM router_switch
+                WHERE routerid = $1
+            ) q1
+            GROUP BY interfacename
+        ) q2;
     `;
     const result = (await postgres.query<{ interfaces: Interfaces }>(query, [routerId])).pop();
     return result? result.interfaces : null;

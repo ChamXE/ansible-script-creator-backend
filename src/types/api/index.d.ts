@@ -5,6 +5,7 @@ export type Config = {
     port: number;
     secret: string;
     cookieExpire: number;
+    allowOrigin: string[];
 };
 
 export type ResponseBody = Record<string, any> | undefined;

@@ -7,10 +7,6 @@ export default async function loader(): Promise<void> {
     await (await import('@/services/postgres')).init();
     log.info('Postgresql loaded');
 
-    log.info('Loading servers');
-    await import('@/services/execution');
-    log.info('Servers loaded');
-
     // log.info('Loading jobs');
     // await (await import('@/jobs')).default();
     // log.info('Jobs loaded');

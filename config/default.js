@@ -4,6 +4,7 @@ exports.api = {
     port: 8080,
     secret: '',
     cookieExpire: 1000 * 60 * 60,
+    allowOrigin: [],
 };
 
 exports.influx = {

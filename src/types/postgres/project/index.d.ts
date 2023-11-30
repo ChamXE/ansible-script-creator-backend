@@ -15,9 +15,8 @@ export interface RouterSwitch {
     routerid: number;
     switchid: number;
     portname: string;
-    ip: string;
-    subnet: string;
     interfacename: string | null;
+    configuration: InterfaceConfiguration;
 }
 
 export interface SwitchSwitch {
@@ -60,7 +59,7 @@ type Ports = {
         ip: string;
         subnet: string;
         name: string;
-    }
+    }[]
 }
 
 export interface HostInfo {
@@ -74,5 +73,9 @@ export interface HostInfo {
 }
 
 export type Interfaces = {
-    [interfacename: string]: string
+    [interfacename: string]: string[];
+}
+
+type InterfaceConfiguration = {
+    [ip: string]: string;
 }
