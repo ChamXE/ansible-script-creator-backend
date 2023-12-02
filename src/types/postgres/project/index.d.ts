@@ -17,6 +17,7 @@ export interface RouterSwitch {
     portname: string;
     interfacename: string | null;
     configuration: InterfaceConfiguration;
+    peer: string | null;
 }
 
 export interface SwitchSwitch {

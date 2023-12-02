@@ -1,6 +1,7 @@
 import * as postgres from '@/services/postgres';
 import { Project, RouterSwitch, SwitchSwitch, SwitchHost, SwitchInfo, RouterInfo, HostInfo, Interfaces } from '~/postgres/project';
 import { Server } from "~/postgres/device";
+import { ONOSConfig, BGPConfig } from "~/postgres/service";
 
 export async function retrieveProjects(username: string): Promise<Project[]> {
     const query = `
@@ -61,12 +62,12 @@ export async function retrieveSwitchHost(projectId: number): Promise<SwitchHost[
     return await postgres.query<SwitchHost>(query, [projectId]);
 }
 
-export async function createRouterSwitch({ projectid, routerid, switchid, portname, configuration }: RouterSwitch): Promise<void> {
+export async function createRouterSwitch({ projectid, routerid, switchid, portname, configuration, peer }: RouterSwitch): Promise<void> {
     const id = await checkInterfaceId(projectid, routerid);
     const interfacename = `GigabitEthernet${id}`;
     const query = `
-        INSERT INTO router_switch(projectid, routerid, switchid, portname, configuration, interfacename)
-        VALUES($1, $2, $3, $4, $5, $6)
+        INSERT INTO router_switch(projectid, routerid, switchid, portname, configuration, interfacename, peer)
+        VALUES($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT ON CONSTRAINT router_switch_pk
         DO 
             UPDATE
@@ -76,10 +77,11 @@ export async function createRouterSwitch({ projectid, routerid, switchid, portna
                 switchid = EXCLUDED.switchid,
                 portname = EXCLUDED.portname,
                 configuration = EXCLUDED.configuration,
-                interfacename = EXCLUDED.interfacename;
+                interfacename = EXCLUDED.interfacename,
+                peer = EXCLUDED.peer;
     `;
 
-    await postgres.query(query, [projectid, routerid, switchid, portname, configuration, interfacename]);
+    await postgres.query(query, [projectid, routerid, switchid, portname, configuration, interfacename, peer]);
 }
 
 export async function createSwitchSwitch({ projectid, switchid_src, switchid_dst, portname }: SwitchSwitch): Promise<void> {
@@ -142,7 +144,8 @@ export async function deleteSwitchHost(projectId: number, switchId: number, host
 
 export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterSwitch): Promise<void> {
     const { 
-        projectid, routerid, switchid, portname, configuration, interfacename
+        projectid, routerid, switchid,
+        portname, configuration, interfacename, peer
     } = newInfo;
 
     const {
@@ -157,12 +160,13 @@ export async function updateRouterSwitch(oldInfo: RouterSwitch, newInfo: RouterS
             switchid = $3,
             portname = $4,
             configuration = $5,
-            interfacename = $6
-        WHERE projectid = $7 AND routerid = $8 AND switchid = $9;
+            interfacename = $6,
+            peer = $7
+        WHERE projectid = $8 AND routerid = $9 AND switchid = $10;
     `;
 
     await postgres.query(query, [
-        projectid, routerid, switchid, portname, configuration, interfacename,
+        projectid, routerid, switchid, portname, configuration, interfacename, peer,
         oldProjectId, oldRouterId, oldSwitchId
     ]);
 }
@@ -212,7 +216,7 @@ export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[
         SELECT
             q2.routerid,
             q2.routername,
-            json_object_agg(q2.portname, q2.ports) as ports,
+            json_object_agg(q2.portname, q2.ports ORDER BY q2.interfacename) as ports,
             q2.users,
             q2.routes
         FROM
@@ -220,6 +224,7 @@ export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[
                 q1.routerid,
                 q1.routername,
                 q1.portname,
+                q1.interfacename,
                 json_agg(json_build_object('ip', q1.key, 'subnet', q1.configuration ->> key, 'name', q1.interfacename)) as ports,
                 q1.users,
                 q1.routes
@@ -237,7 +242,7 @@ export async function retrieveRouterInfo(projectId: number): Promise<RouterInfo[
                 ON r.projectid = rs.projectid AND r.routerid = rs.routerid
                 WHERE r.projectid = $1 AND rs.portname IS NOT NULL
                 GROUP BY r.routerid, rs.projectid, rs.switchid, rs.configuration, interfacename, portname) q1
-            GROUP BY routerid, routername, users, routes, portname) q2
+            GROUP BY routerid, routername, users, routes, portname, interfacename) q2
         GROUP BY routerid, routername, users, routes;
     `;
 
@@ -374,4 +379,49 @@ async function checkInterfaceId(projectId: number, routerId: number): Promise<nu
 
     const id = (await postgres.query<{id: number}>(query,[projectId, routerId])).pop()?.id;
     return id ? id + 2 : 2;
+}
+
+export async function retrieveONOSPortConfiguration(projectId: number): Promise<ONOSConfig[]> {
+    const query = `
+        SELECT
+            q2.routername, rs.portname, q3.source, rs.peer
+        FROM router_switch rs
+        JOIN LATERAL (
+            SELECT switchid FROM switch
+            WHERE controller IS NOT NULL
+        ) q1 ON q1.switchid = rs.switchid
+        JOIN LATERAL (
+            SELECT routerid, routername FROM router
+        ) q2 ON q2.routerid = rs.routerid
+        LEFT JOIN LATERAL (
+            SELECT routerid, jsonb_object_keys(configuration) as source FROM router_switch
+            WHERE peer IS NOT NULL
+        ) q3 ON q3.routerid = rs.routerid
+        WHERE projectid = $1
+        GROUP BY q2.routername, rs.portname, rs.peer, q3.source;
+    `;
+
+    return (await postgres.query<ONOSConfig>(query, [projectId]));
+}
+
+export async function retrieveBGPConfiguration(projectId: number): Promise<BGPConfig[]> {
+    const query = `
+        SELECT
+            routername,
+            q1.bgp
+        FROM router r
+        JOIN LATERAL (
+            SELECT routerid, json_agg(json_build_object(
+                'asnumber', asnumber,
+                'bgprouterid', bgprouterid,
+                'neighbour', neighbour,
+                'network', network
+            )) as bgp
+            FROM bgp_configuration
+            GROUP BY routerid
+        ) q1 ON r.routerid = q1.routerid
+        WHERE projectid = $1;
+    `;
+
+    return (await postgres.query<BGPConfig>(query, [projectId]));
 }

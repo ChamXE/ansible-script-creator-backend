@@ -1,12 +1,12 @@
-import { BGP, RouterBGPInfo } from "~/postgres/service";
+import { BGP } from "~/postgres/service";
 import * as postgres from "@/services/postgres";
 
-export async function retrieveBGPInfo(routerid: string): Promise<RouterBGPInfo[]> {
+export async function retrieveBGPInfo(routerid: number): Promise<BGP[]> {
     const query = `
-        SELECT asnumber, configid, bgprouterid, neighbour, network FROM bgp_configuration WHERE routerid = $1;
+        SELECT * FROM bgp_configuration WHERE routerid = $1;
     `;
 
-    return (await postgres.query<RouterBGPInfo>(query, [routerid]));
+    return (await postgres.query<BGP>(query, [routerid]));
 }
 
 export async function createBGPConfiguration({

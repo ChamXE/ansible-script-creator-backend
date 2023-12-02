@@ -8,7 +8,7 @@ const log = logger('API', 'SERVICE');
 
 export async function retrieveRouterBGPInfo(request: e.Request, response: e.Response): Promise<void> {
     try {
-        const result = await service.retrieveBGPInfo(request.params.username);
+        const result = await service.retrieveBGPInfo(+request.params.routerId);
         success(response, result);
     } catch(e) {
         log.error(e);

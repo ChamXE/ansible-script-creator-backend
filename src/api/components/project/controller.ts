@@ -241,7 +241,17 @@ export async function generateProject(request: e.Request, response: e.Response):
             await project.updateProjectGenerated(projectId, false);
             return;
         }
-        await sleep(4 * 60 * 1000);
+        const createHostResult = await AnsibleScript.createHost(projectId, username, password);
+        if(createHostResult) {
+            await project.updateProjectGenerated(projectId, false);
+            return;
+        }
+        const annotateDeviceResult = await AnsibleScript.annotateDevice(projectId, username, password);
+        if(annotateDeviceResult) {
+            await project.updateProjectGenerated(projectId, false);
+            return;
+        }
+        await sleep(3 * 60 * 1000);
         const getIPResult = await AnsibleScript.getIP(projectId, username, password);
         if(getIPResult) {
             await project.updateProjectGenerated(projectId, false);
@@ -253,8 +263,8 @@ export async function generateProject(request: e.Request, response: e.Response):
             await project.updateProjectGenerated(projectId, false);
             return;
         }
-        const createHostResult = await AnsibleScript.createHost(projectId, username, password);
-        if(createHostResult) {
+        const configureBGPResult = await AnsibleScript.configureBGP(projectId, username, password);
+        if(configureBGPResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
@@ -324,10 +334,12 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
     }
 }
 
-export async function generateHostFile(projectId: number, ip: string): Promise<number> {
+async function generateHostFile(projectId: number, ip: string): Promise<number> {
     const routerInfo = await project.retrieveRouterInfo(projectId);
     const switchInfo = await project.retrieveSwitchInfo(projectId);
     const hostInfo = await project.retrieveHostInfo(projectId);
+    const portConfig = await project.retrieveONOSPortConfiguration(projectId);
+    const bgpConfig = await project.retrieveBGPConfiguration(projectId);
     let hostFile = `all:\n${whitespace(2)}children:\n${whitespace(4)}network:\n`;
     hostFile += `${whitespace(6)}hosts:\n${whitespace(8)}${ip}:\n`;
     hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
@@ -400,6 +412,44 @@ export async function generateHostFile(projectId: number, ip: string): Promise<n
             hostFile += `${whitespace(14)}ovsportname: ${host.ovsportname}\n`;
             hostFile += `${whitespace(14)}hostportname: ${host.hostportname}\n`;
             hostFile += `${whitespace(14)}defaultgateway: ${host.defaultgateway}\n`;
+        });
+    }
+    if(portConfig.length) {
+        hostFile += `${whitespace(10)}interfaces:\n`;
+        portConfig.forEach(({ portname, peer, routername, source }) => {
+            hostFile += `${whitespace(12)}- name: ${portname}\n`;
+            hostFile += `${whitespace(14)}routername: ${routername}\n`;
+            if(source) hostFile += `${whitespace(14)}source: ${source}\n`;
+            if(peer) hostFile += `${whitespace(14)}peer: ${peer}\n`;
+        });
+    }
+    if(bgpConfig.length) {
+        hostFile += `${whitespace(10)}bgp:\n`;
+        bgpConfig.forEach(({ routername, bgp }) => {
+            const currentRouter = routername;
+            const port = portConfig.filter(({ routername }) => routername === currentRouter);
+            if(bgp[0].asnumber) {
+                hostFile += `${whitespace(12)}${routername}:\n`;
+                bgp.forEach(({ asnumber, bgprouterid, neighbour, network }) => {
+                    hostFile += `${whitespace(14)}asnumber: ${asnumber}\n`;
+                    if(bgprouterid) hostFile += `${whitespace(14)}bgprouterid: ${bgprouterid}\n`;
+                    hostFile += `${whitespace(14)}neighbour:\n`;
+                    neighbour!.forEach(({ id, remoteas, ebgpmultihop }, idx) => {
+                        hostFile += `${whitespace(16)}- id: ${id}\n`;
+                        hostFile += `${whitespace(18)}remoteas: ${remoteas}\n`;
+                        if(ebgpmultihop) hostFile += `${whitespace(18)}ebgpmultihop: 255\n`;
+                        if(idx === neighbour!.length - 1 && !port[0].peer) {
+                            hostFile += `${whitespace(16)}- id: 192.168.56.1\n`;
+                            hostFile += `${whitespace(18)}remoteas: ${asnumber}\n`;
+                        }
+                    })
+                    if(network) hostFile += `${whitespace(14)}network:\n`;
+                    network?.forEach(({ ip, mask }) => {
+                        hostFile += `${whitespace(16)}- ip: ${ip}\n`;
+                        hostFile += `${whitespace(18)}mask: ${mask}\n`;
+                    })
+                })
+            }
         });
     }
     hostFile += `${whitespace(4)}ungrouped: {}\n`;
