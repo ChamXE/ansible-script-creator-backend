@@ -20,9 +20,12 @@ interface AdvertiseNetwork {
 
 export interface ONOSConfig {
     routername: string;
+    switchname: string;
     portname: string;
-    peer: string;
-    source: string;
+    interfacename: string;
+    peer: string | null;
+    source: string | null;
+    subnet: string | null;
 }
 
 export interface BGPConfig {

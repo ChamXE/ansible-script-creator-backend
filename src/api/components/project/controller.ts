@@ -6,7 +6,7 @@ import * as device from '@/services/postgres/device';
 import { success, failure } from '@/api/util';
 import { Project, RouterSwitch, SwitchHost, SwitchSwitch } from '@/types/postgres/project';
 import * as AnsibleScript from "@/services/execution/ansible-scripts";
-import { sleep } from "@/util";
+import { sleep, Subnet } from "@/util";
 
 const log = logger('API', 'PROJECT');
 const hostFilePath = './execution';
@@ -416,12 +416,23 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
     }
     if(portConfig.length) {
         hostFile += `${whitespace(10)}interfaces:\n`;
-        portConfig.forEach(({ portname, peer, routername, source }) => {
-            hostFile += `${whitespace(12)}- name: ${portname}\n`;
-            hostFile += `${whitespace(14)}routername: ${routername}\n`;
-            if(source) hostFile += `${whitespace(14)}source: ${source}\n`;
-            if(peer) hostFile += `${whitespace(14)}peer: ${peer}\n`;
+        portConfig
+            .filter(({ peer }) => peer !== null)
+            .forEach(({ portname, switchname, source, peer, subnet }) => {
+            hostFile += `${whitespace(12)}- portname: ${portname}\n`;
+            hostFile += `${whitespace(14)}switchname: ${switchname}\n`;
+            hostFile += `${whitespace(14)}source: ${source}\n`;
+            hostFile += `${whitespace(14)}peer: ${peer}/${Subnet[subnet!]}\n`;
         });
+        hostFile += `${whitespace(10)}bgpspeaker:\n`;
+        portConfig
+            .filter(({ peer }) => peer === null)
+            .forEach(({ portname, routername, switchname, interfacename }) => {
+                hostFile += `${whitespace(12)}- portname: ${portname}\n`;
+                hostFile += `${whitespace(14)}routername: ${routername}\n`;
+                hostFile += `${whitespace(14)}switchname: ${switchname}\n`;
+                hostFile += `${whitespace(14)}interfacename: ${interfacename}\n`;
+            });
     }
     if(bgpConfig.length) {
         hostFile += `${whitespace(10)}bgp:\n`;

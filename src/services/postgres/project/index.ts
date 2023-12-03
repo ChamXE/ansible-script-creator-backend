@@ -384,21 +384,21 @@ async function checkInterfaceId(projectId: number, routerId: number): Promise<nu
 export async function retrieveONOSPortConfiguration(projectId: number): Promise<ONOSConfig[]> {
     const query = `
         SELECT
-            q2.routername, rs.portname, q3.source, rs.peer
+            q2.routername, q1.switchname, rs.portname, q3.source, q3.configuration ->> q3.source as subnet, rs.peer, rs.interfacename
         FROM router_switch rs
         JOIN LATERAL (
-            SELECT switchid FROM switch
+            SELECT switchid, switchname FROM switch
             WHERE controller IS NOT NULL
         ) q1 ON q1.switchid = rs.switchid
         JOIN LATERAL (
             SELECT routerid, routername FROM router
         ) q2 ON q2.routerid = rs.routerid
         LEFT JOIN LATERAL (
-            SELECT routerid, jsonb_object_keys(configuration) as source FROM router_switch
+            SELECT routerid, jsonb_object_keys(configuration) as source, configuration FROM router_switch
             WHERE peer IS NOT NULL
         ) q3 ON q3.routerid = rs.routerid
         WHERE projectid = $1
-        GROUP BY q2.routername, rs.portname, rs.peer, q3.source;
+        GROUP BY q2.routername, q1.switchname, rs.portname, q3.source, rs.peer, rs.interfacename, q3.configuration;
     `;
 
     return (await postgres.query<ONOSConfig>(query, [projectId]));
