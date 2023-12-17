@@ -59,6 +59,12 @@ export async function deleteVM(projectId: number, username: string, password: st
     return 1;
 }
 
+export async function deleteONOSConfig(projectId: number, username: string, password: string): Promise<number> {
+    const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'deleteONOSConfig.yml']);
+    if(!result) return 0;
+    return 1;
+}
+
 export async function configureBGP(projectId: number, username: string, password: string): Promise<number> {
     const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'configBGP.yml']);
     if(!result) return 0;
@@ -67,6 +73,12 @@ export async function configureBGP(projectId: number, username: string, password
 
 export async function annotateDevice(projectId: number, username: string, password: string): Promise<number> {
     const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'annotateFriendlyName.yml']);
+    if(!result) return 0;
+    return 1;
+}
+
+export async function configureONOS(projectId: number, username: string, password: string): Promise<number> {
+    const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'configONOS.yml']);
     if(!result) return 0;
     return 1;
 }

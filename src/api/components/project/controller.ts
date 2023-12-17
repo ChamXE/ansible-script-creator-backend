@@ -268,6 +268,11 @@ export async function generateProject(request: e.Request, response: e.Response):
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        const configureONOSResult = await AnsibleScript.configureONOS(projectId, username, password);
+        if(configureONOSResult) {
+            await project.updateProjectGenerated(projectId, false);
+            return;
+        }
         await project.updateReady(projectId, true);
     } catch (e) {
         log.error(e);
@@ -303,6 +308,10 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
     if(generated === 1 && ready === 1) {
         const result = await generateHostFile(projectId, ip);
         if(!result) {
+            return 1;
+        }
+        const deleteONOSConfigResult = await AnsibleScript.deleteONOSConfig(projectId, username, password);
+        if(deleteONOSConfigResult) {
             return 1;
         }
         const deleteHostResult = await AnsibleScript.deleteHost(projectId, username, password);
