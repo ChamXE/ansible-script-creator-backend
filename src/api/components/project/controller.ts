@@ -2,6 +2,7 @@ import type e from 'express';
 import logger from 'logger';
 import fs from 'fs';
 import * as project from '@/services/postgres/project';
+import * as service from '@/services/postgres/service';
 import * as device from '@/services/postgres/device';
 import { success, failure } from '@/api/util';
 import { Project, RouterSwitch, SwitchHost, SwitchSwitch } from '@/types/postgres/project';
@@ -225,6 +226,7 @@ export async function generateProject(request: e.Request, response: e.Response):
             return;
         }
         success(response, { result: true });
+        return;
         await project.updateProjectGenerated(projectId, true);
         const createVMResult = await AnsibleScript.createVM(projectId, username, password);
         if(createVMResult) {
@@ -349,6 +351,7 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
     const hostInfo = await project.retrieveHostInfo(projectId);
     const portConfig = await project.retrieveONOSPortConfiguration(projectId);
     const bgpConfig = await project.retrieveBGPConfiguration(projectId);
+    const customIntent = await service.retrieveCustomIntent(projectId);
     let hostFile = `all:\n${whitespace(2)}children:\n${whitespace(4)}network:\n`;
     hostFile += `${whitespace(6)}hosts:\n${whitespace(8)}${ip}:\n`;
     hostFile += `${whitespace(10)}ansible_python_interpreter: /usr/bin/python3.6\n${whitespace(10)}vms:\n`
@@ -469,6 +472,34 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
                         hostFile += `${whitespace(18)}mask: ${mask}\n`;
                     })
                 })
+            }
+        });
+    }
+    if(customIntent.length) {
+        hostFile += `${whitespace(10)}intents:\n`;
+        customIntent.forEach((intent) => {
+            const { source, destination, intermediate, sourcekey, destkey, protocol, ethertype } = intent;
+            const length = intermediate.length;
+            for(let i = 0; i < length; i++) {
+                if(i === 0) {
+                    hostFile += `${whitespace(12)}- ingress: ${source + intermediate[i]}\n`;
+                }
+                else {
+                    hostFile += `${whitespace(12)}- ingress: ${intermediate[i] + intermediate[i-1]}\n`;
+                }
+                if(i === length - 1) {
+                    hostFile += `${whitespace(14)}egress: ${destination + intermediate[i]}\n`;
+                }
+                else {
+                    hostFile += `${whitespace(14)}egress: ${intermediate[i] + intermediate[i+1]}\n`;
+                }
+                hostFile += `${whitespace(14)}node: ${intermediate[i]}\n`
+                hostFile += `${whitespace(14)}priority: 2500\n`;
+                hostFile += `${whitespace(14)}ethertype: ${ethertype}\n`;
+                if(protocol) hostFile += `${whitespace(14)}protocol: ${protocol}\n`;
+                hostFile += `${whitespace(14)}sourceNet: ${sourcekey}\n`;
+                hostFile += `${whitespace(14)}destNet: ${destkey}\n`;
+                hostFile += `${whitespace(14)}destName: ${destination}\n`;
             }
         });
     }
