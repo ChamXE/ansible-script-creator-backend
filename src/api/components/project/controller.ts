@@ -226,7 +226,6 @@ export async function generateProject(request: e.Request, response: e.Response):
             return;
         }
         success(response, { result: true });
-        return;
         await project.updateProjectGenerated(projectId, true);
         const createVMResult = await AnsibleScript.createVM(projectId, username, password);
         if(createVMResult) {
@@ -275,6 +274,11 @@ export async function generateProject(request: e.Request, response: e.Response):
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        const configureIntentResult = await AnsibleScript.configureIntent(projectId, username, password);
+        if(configureIntentResult) {
+            await project.updateProjectGenerated(projectId, false);
+            return;
+        }
         await project.updateReady(projectId, true);
     } catch (e) {
         log.error(e);
@@ -308,8 +312,8 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
     const generated = await project.checkProjectGenerated(projectId);
     const ready = await project.checkProjectReady(projectId);
     if(generated === 1 && ready === 1) {
-        const result = await generateHostFile(projectId, ip);
-        if(!result) {
+        const deleteIntentResult = await AnsibleScript.deleteIntent(projectId, username, password);
+        if(deleteIntentResult) {
             return 1;
         }
         const deleteONOSConfigResult = await AnsibleScript.deleteONOSConfig(projectId, username, password);

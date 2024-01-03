@@ -83,6 +83,18 @@ export async function configureONOS(projectId: number, username: string, passwor
     return 1;
 }
 
+export async function configureIntent(projectId: number, username: string, password: string): Promise<number> {
+    const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'configIntent.yml']);
+    if(!result) return 0;
+    return 1;
+}
+
+export async function deleteIntent(projectId: number, username: string, password: string): Promise<number> {
+    const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'deleteIntent.yml']);
+    if(!result) return 0;
+    return 1;
+}
+
 export async function offVM(projectId: number, username: string, password: string): Promise<number> {
     const result = await executeCommand('./script.exp', undefined, [username, password, `${projectId}.yaml`, 'downVM.yml']);
     if(!result) return 0;
