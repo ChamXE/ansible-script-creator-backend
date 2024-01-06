@@ -8,7 +8,7 @@ module.exports = {
             script: 'npm',
             args: 'start',
             out_file: `${home}/.pm2/logs/${name}/${name}.log`,
-            error_file: `${home}/.pm2/logs/${name}/${name}.log`,
+            error_file: `${home}/.pm2/logs/${name}/${name}-error.log`,
             env: { NODE_ENV: 'production' },
         },
     ],

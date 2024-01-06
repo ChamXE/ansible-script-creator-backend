@@ -227,53 +227,63 @@ export async function generateProject(request: e.Request, response: e.Response):
         }
         success(response, { result: true });
         await project.updateProjectGenerated(projectId, true);
+        log.info(`Project ${projectId}: Creating VMs`);
         const createVMResult = await AnsibleScript.createVM(projectId, username, password);
         if(createVMResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Creating and setup OVS`);
         const setupOVSResult = await AnsibleScript.setupOVS(projectId, username, password);
         if(setupOVSResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Turning on VMs`);
         const upVMResult = await AnsibleScript.onVM(projectId, username, password);
         if(upVMResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Creating Hosts`);
         const createHostResult = await AnsibleScript.createHost(projectId, username, password);
         if(createHostResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Annotating Devices`);
         const annotateDeviceResult = await AnsibleScript.annotateDevice(projectId, username, password);
         if(annotateDeviceResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
         await sleep(3 * 60 * 1000);
+        log.info(`Project ${projectId}: Obtaining VMs IP`);
         const getIPResult = await AnsibleScript.getIP(projectId, username, password);
         if(getIPResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
         await updateManagementIP(projectId);
+        log.info(`Project ${projectId}: Configuring VMs General`);
         const configRouterResult = await AnsibleScript.configRouter(projectId, username, password);
         if(configRouterResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Configuring VMs BGP`);
         const configureBGPResult = await AnsibleScript.configureBGP(projectId, username, password);
         if(configureBGPResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Configuring ONOS`);
         const configureONOSResult = await AnsibleScript.configureONOS(projectId, username, password);
         if(configureONOSResult) {
             await project.updateProjectGenerated(projectId, false);
             return;
         }
+        log.info(`Project ${projectId}: Configuring Intents`);
         const configureIntentResult = await AnsibleScript.configureIntent(projectId, username, password);
         if(configureIntentResult) {
             await project.updateProjectGenerated(projectId, false);
@@ -289,12 +299,12 @@ export async function generateProject(request: e.Request, response: e.Response):
 export async function destroyProject(request: e.Request, response: e.Response): Promise<void> {
     try {
         const projectId = +request.params.projectId;
+        success(response, { result: true });
         const destroyProjectResult = await destroyProjectBehind(projectId);
         if(destroyProjectResult !== 0) {
-            success(response, { result: false });
+            log.error("Project deletion failed!");
             return;
         }
-        success(response, { result: true });
     } catch (e) {
         log.error(e);
         failure(response, e);
@@ -312,18 +322,22 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
     const generated = await project.checkProjectGenerated(projectId);
     const ready = await project.checkProjectReady(projectId);
     if(generated === 1 && ready === 1) {
+        log.info(`Project ${projectId}: Deleting Intents`);
         const deleteIntentResult = await AnsibleScript.deleteIntent(projectId, username, password);
         if(deleteIntentResult) {
             return 1;
         }
+        log.info(`Project ${projectId}: Deleting ONOS Config`);
         const deleteONOSConfigResult = await AnsibleScript.deleteONOSConfig(projectId, username, password);
         if(deleteONOSConfigResult) {
             return 1;
         }
+        log.info(`Project ${projectId}: Deleting Hosts`);
         const deleteHostResult = await AnsibleScript.deleteHost(projectId, username, password);
         if(deleteHostResult) {
             return 1;
         }
+        log.info(`Project ${projectId}: Deleting VMs`);
         const deleteVMResult = await AnsibleScript.deleteVM(projectId, username, password);
         if(deleteVMResult) {
             return 1;
@@ -331,6 +345,7 @@ async function destroyProjectBehind(projectId: number): Promise<number> {
         for(let i = 0; i < routerInfo.length; i++) {
             await device.updateManagementIP(routerInfo[i].routerid, null);
         }
+        log.info(`Project ${projectId}: Deleting OVS`);
         const deleteOVSResult = await AnsibleScript.deleteOVS(projectId, username, password);
         if(deleteOVSResult) {
             return 1;
