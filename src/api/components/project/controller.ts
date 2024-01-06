@@ -418,7 +418,7 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
     hostFile += `${whitespace(10)}ovs:\n`;
     switchInfo.forEach((switchR) => {
         hostFile += `${whitespace(12)}- name: ${switchR.switchname}\n`;
-        if(switchR.controller) hostFile += `${whitespace(14)}controller: ${switchR.controller}\n`;
+        if(switchR.controller) hostFile += `${whitespace(14)}controller: ${ip}\n`;
         if(switchR.access.length) {
             hostFile += `${whitespace(14)}access:\n`;
             switchR.access.forEach((port) => {

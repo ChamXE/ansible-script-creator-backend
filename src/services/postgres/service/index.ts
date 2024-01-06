@@ -50,7 +50,7 @@ export async function retrieveConnection(projectId: number): Promise<ParsedConne
             s.switchname AS destination, rs.portname
         FROM router_switch rs
         INNER JOIN switch s
-        ON rs.switchid = s.switchid AND s.controller IS NOT NULL
+        ON rs.switchid = s.switchid AND s.controller = true
         INNER JOIN router r
         ON rs.routerid = r.routerid
         WHERE rs.projectid = $1
@@ -96,7 +96,7 @@ export async function retrieveSources(projectId: number): Promise<Source[]> {
             jsonb_agg(rs.configuration) as configuration
         FROM router_switch rs
         INNER JOIN switch s
-        ON s.switchid = rs.switchid AND s.controller IS NULL
+        ON s.switchid = rs.switchid AND s.controller = false
         INNER JOIN router r
         ON r.routerid = rs.routerid
         WHERE rs.projectid = $1

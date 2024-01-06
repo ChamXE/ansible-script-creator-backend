@@ -45,7 +45,7 @@ export interface RouterInfo {
 
 export interface SwitchInfo {
     switchname: string;
-    controller: string;
+    controller: boolean;
     access: string[];
     patch: Patch[];
 }

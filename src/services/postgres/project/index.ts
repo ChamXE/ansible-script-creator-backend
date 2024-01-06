@@ -388,7 +388,7 @@ export async function retrieveONOSPortConfiguration(projectId: number): Promise<
         FROM router_switch rs
         JOIN LATERAL (
             SELECT switchid, switchname FROM switch
-            WHERE controller IS NOT NULL
+            WHERE controller = true
         ) q1 ON q1.switchid = rs.switchid
         JOIN LATERAL (
             SELECT routerid, routername FROM router
