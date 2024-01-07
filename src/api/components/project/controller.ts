@@ -449,8 +449,10 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
         hostFile += `${whitespace(10)}interfaces:\n`;
         portConfig
             .filter(({ peer }) => peer !== null)
-            .forEach(({ portname, switchname, source, peer, subnet }) => {
+            .forEach(({ portname, switchname, source, peer, subnet, interfacename, routername }) => {
             hostFile += `${whitespace(12)}- portname: ${portname}\n`;
+            hostFile += `${whitespace(14)}interfacename: ${interfacename}\n`;
+            hostFile += `${whitespace(14)}routername: ${routername}\n`;
             hostFile += `${whitespace(14)}switchname: ${switchname}\n`;
             hostFile += `${whitespace(14)}source: ${source}\n`;
             hostFile += `${whitespace(14)}peer: ${peer}/${Subnet[subnet!]}\n`;
