@@ -484,7 +484,7 @@ async function generateHostFile(projectId: number, ip: string): Promise<number> 
                         if(ebgpmultihop) hostFile += `${whitespace(18)}ebgpmultihop: 255\n`;
                         if(idx === neighbour!.length - 1 && !port[0].peer) {
                             hostFile += `${whitespace(16)}- id: 192.168.56.1\n`;
-                            hostFile += `${whitespace(18)}remoteas: ${asnumber}\n`;
+                            hostFile += `${whitespace(18)}remoteas: 1000\n`;
                         }
                     })
                     if(network) hostFile += `${whitespace(14)}network:\n`;
